@@ -59,6 +59,7 @@ class SequenceGeneratorService implements InitializingBean {
                     }
                     h = createHandle(start, format)
                     map.put(key, h)
+                    log.debug "Created new sequence $key with format [$format]"
                 }
             }
         }
