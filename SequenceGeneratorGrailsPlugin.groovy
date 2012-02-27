@@ -1,6 +1,6 @@
 import grails.plugins.sequence.SequenceEntity
 
-class SequenceGrailsPlugin {
+class SequenceGeneratorGrailsPlugin {
     // the plugin version
     def version = "0.1"
     // the version or versions of Grails the plugin is designed for
@@ -79,7 +79,7 @@ the next number for the sequence defined for the domain.
     }
 
     private void addDomainMethods(ctx, config, MetaClass mc) {
-        def service = ctx.getBean('sequenceService')
+        def service = ctx.getBean('sequenceGeneratorService')
         mc.getNextSequenceNumber = {group = null ->
             def name = delegate.class.simpleName
             def tenant = delegate.hasProperty('tenantId') ? delegate.tenantId : null

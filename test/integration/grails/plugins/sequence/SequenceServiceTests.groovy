@@ -2,38 +2,38 @@ package grails.plugins.sequence
 
 class SequenceServiceTests extends GroovyTestCase {
 
-    def sequenceService
+    def sequenceGeneratorService
 
     void testNoFormat() {
         def name = "Company"
-        sequenceService.initSequence(name, null, null, 1)
-        assertEquals 1L, sequenceService.nextNumberLong(name)
-        assertEquals "2", sequenceService.nextNumber(name)
-        assertEquals 3L, sequenceService.nextNumberLong(name)
+        sequenceGeneratorService.initSequence(name, null, null, 1)
+        assertEquals 1L, sequenceGeneratorService.nextNumberLong(name)
+        assertEquals "2", sequenceGeneratorService.nextNumber(name)
+        assertEquals 3L, sequenceGeneratorService.nextNumberLong(name)
 
         Thread.sleep(3000) // Wait for persister to finish
 
-        assertEquals "4", sequenceService.nextNumber('Company')
+        assertEquals "4", sequenceGeneratorService.nextNumber('Company')
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 
     void testFormat() {
-        def seq = sequenceService.initSequence('Customer', null, null, 100, 'K-%04d')
+        def seq = sequenceGeneratorService.initSequence('Customer', null, null, 100, 'K-%04d')
 
-        assertEquals 'K-0100', sequenceService.nextNumber('Customer')
-        assertEquals 'K-0101', sequenceService.nextNumber('Customer')
-        assertEquals 'K-0102', sequenceService.nextNumber('Customer')
+        assertEquals 'K-0100', sequenceGeneratorService.nextNumber('Customer')
+        assertEquals 'K-0101', sequenceGeneratorService.nextNumber('Customer')
+        assertEquals 'K-0102', sequenceGeneratorService.nextNumber('Customer')
 
         Thread.sleep(3000) // Wait for persister to finish
 
-        assertEquals 'K-0103', sequenceService.nextNumber('Customer')
+        assertEquals 'K-0103', sequenceGeneratorService.nextNumber('Customer')
 
-        //sequenceService.save()
+        //sequenceGeneratorService.save()
 
         assertEquals 104, seq.number
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 
     void testThreads() {
@@ -42,7 +42,7 @@ class SequenceServiceTests extends GroovyTestCase {
         final int THREADS = 100
         final int NUMBERS = 1000
 
-        sequenceService.initSequence(sequenceName, null, null, 1000)
+        sequenceGeneratorService.initSequence(sequenceName, null, null, 1000)
 
         // Start THREADS threads that grab NUMBERS numbers each.
         def slots = new ArrayList(THREADS)
@@ -54,11 +54,11 @@ class SequenceServiceTests extends GroovyTestCase {
                 SequenceDefinition.withNewSession {
                     //println "Thread ${Thread.currentThread().id} starting..."
                     NUMBERS.times {
-                        arr << sequenceService.nextNumberLong(sequenceName)
+                        arr << sequenceGeneratorService.nextNumberLong(sequenceName)
                     }
                     arr[0] = System.currentTimeMillis() - arr[0]
                     if ((Thread.currentThread().id.intValue() % (THREADS / 3).intValue()) == 0) {
-                        sequenceService.reset() // Be evil and reset all counters from db in the middle of the test.
+                        sequenceGeneratorService.reset() // Be evil and reset all counters from db in the middle of the test.
                     }
                     //println "Thread ${Thread.currentThread().id} finished"
                 }
@@ -85,48 +85,48 @@ class SequenceServiceTests extends GroovyTestCase {
         }
 
         println "Average time ${(time / slots.size()).intValue()} ms"
-        assertEquals 1000 + THREADS * NUMBERS, sequenceService.nextNumberLong(sequenceName)
+        assertEquals 1000 + THREADS * NUMBERS, sequenceGeneratorService.nextNumberLong(sequenceName)
 
         Thread.sleep(3000) // Wait for persister to finish
 
-        assertEquals 1001 + THREADS * NUMBERS, sequenceService.nextNumberLong(sequenceName)
+        assertEquals 1001 + THREADS * NUMBERS, sequenceGeneratorService.nextNumberLong(sequenceName)
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 
     def testDomainMethod() {
-        sequenceService.initSequence(SequenceTestEntity.simpleName, null, null, 1000, '%05d')
+        sequenceGeneratorService.initSequence(SequenceTestEntity.simpleName, null, null, 1000, '%05d')
         assertEquals "01000", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01001", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01002", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01003", new SequenceTestEntity().getNextSequenceNumber()
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 
     def testStartWithZero() {
-        sequenceService.initSequence("Zero", null, null, 0)
-        assertEquals "0", sequenceService.nextNumber("Zero")
+        sequenceGeneratorService.initSequence("Zero", null, null, 0)
+        assertEquals "0", sequenceGeneratorService.nextNumber("Zero")
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 
     def testMultiTenant() {
-        sequenceService.initSequence("TenantTest", null, 0, 100)
-        sequenceService.initSequence("TenantTest", null, 1, 100)
-        sequenceService.initSequence("TenantTest", null, 2, 200)
-        assertEquals 100, sequenceService.nextNumberLong("TenantTest", null, 0)
-        assertEquals 100, sequenceService.nextNumberLong("TenantTest", null, 1)
-        assertEquals 200, sequenceService.nextNumberLong("TenantTest", null, 2)
-        assertEquals 101, sequenceService.nextNumberLong("TenantTest", null, 0)
-        assertEquals 102, sequenceService.nextNumberLong("TenantTest", null, 0)
-        assertEquals 103, sequenceService.nextNumberLong("TenantTest", null, 0)
-        assertEquals 201, sequenceService.nextNumberLong("TenantTest", null, 2)
-        assertEquals 202, sequenceService.nextNumberLong("TenantTest", null, 2)
-        assertEquals 203, sequenceService.nextNumberLong("TenantTest", null, 2)
-        assertEquals 101, sequenceService.nextNumberLong("TenantTest", null, 1)
-        assertEquals 102, sequenceService.nextNumberLong("TenantTest", null, 1)
+        sequenceGeneratorService.initSequence("TenantTest", null, 0, 100)
+        sequenceGeneratorService.initSequence("TenantTest", null, 1, 100)
+        sequenceGeneratorService.initSequence("TenantTest", null, 2, 200)
+        assertEquals 100, sequenceGeneratorService.nextNumberLong("TenantTest", null, 0)
+        assertEquals 100, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
+        assertEquals 200, sequenceGeneratorService.nextNumberLong("TenantTest", null, 2)
+        assertEquals 101, sequenceGeneratorService.nextNumberLong("TenantTest", null, 0)
+        assertEquals 102, sequenceGeneratorService.nextNumberLong("TenantTest", null, 0)
+        assertEquals 103, sequenceGeneratorService.nextNumberLong("TenantTest", null, 0)
+        assertEquals 201, sequenceGeneratorService.nextNumberLong("TenantTest", null, 2)
+        assertEquals 202, sequenceGeneratorService.nextNumberLong("TenantTest", null, 2)
+        assertEquals 203, sequenceGeneratorService.nextNumberLong("TenantTest", null, 2)
+        assertEquals 101, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
+        assertEquals 102, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
 
-        sequenceService.reset()
+        sequenceGeneratorService.reset()
     }
 }

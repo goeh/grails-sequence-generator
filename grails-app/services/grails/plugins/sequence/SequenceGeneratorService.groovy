@@ -6,7 +6,7 @@ import org.springframework.beans.factory.InitializingBean
  * A service that provide sequence counters (for customer numbers, invoice numbers, etc)
  * This service has two primary methods: nextNumber() and nextNumberLong().
  */
-class SequenceService implements InitializingBean {
+class SequenceGeneratorService implements InitializingBean {
 
     static transactional = false
 
