@@ -112,11 +112,20 @@ class SequenceServiceTests extends GroovyTestCase {
     }
 
     def testDomainMethod() {
-        sequenceGeneratorService.initSequence(SequenceTestEntity.simpleName, null, null, 1000, '%05d')
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
         assertEquals "01000", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01001", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01002", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01003", new SequenceTestEntity().getNextSequenceNumber()
+
+        sequenceGeneratorService.reset()
+    }
+
+    def testClassArgument() {
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
+        assertEquals "01004", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        assertEquals "01005", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        assertEquals "01006", sequenceGeneratorService.nextNumber(SequenceTestEntity)
 
         sequenceGeneratorService.reset()
     }
@@ -148,7 +157,7 @@ class SequenceServiceTests extends GroovyTestCase {
     }
 
     def testTerminate() {
-        sequenceGeneratorService.initSequence(SequenceTestEntity.simpleName, null, null, 1000, '%05d')
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
         assertEquals "01000", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01001", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01002", new SequenceTestEntity().getNextSequenceNumber()

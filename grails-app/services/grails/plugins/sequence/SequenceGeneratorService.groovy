@@ -73,6 +73,10 @@ class SequenceGeneratorService {
         return myMap
     }
 
+    SequenceHandle initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null) {
+        doInitSequence(map, clazz.simpleName, group, tenant, start, format)
+    }
+
     SequenceHandle initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null) {
         doInitSequence(map, name, group, tenant, start, format)
     }
@@ -118,6 +122,10 @@ class SequenceGeneratorService {
 
     private SequenceHandle createHandle(Long start, String format) {
         new SequenceHandle(start, format)
+    }
+
+    String nextNumber(Class clazz, String group = null, Long tenant = null) {
+        initSequence(clazz.simpleName, group, tenant).nextFormatted()
     }
 
     String nextNumber(String name, String group = null, Long tenant = null) {
