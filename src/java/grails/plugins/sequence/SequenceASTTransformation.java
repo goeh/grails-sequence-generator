@@ -39,8 +39,6 @@ public class SequenceASTTransformation implements ASTTransformation {
 
     public void visit(ASTNode[] nodes, SourceUnit sourceUnit) {
 
-        System.out.println("Modifying source unit " + sourceUnit.getName());
-
         ExpandoMetaClass.disableGlobally();
 
         for (ASTNode astNode : nodes) {
@@ -75,15 +73,13 @@ public class SequenceASTTransformation implements ASTTransformation {
 
                     PropertyNode constraints = theClass.getProperty("constraints");
                     if (constraints != null) {
-                        System.out.println("Adding sequence to existing constraints closure for class " + theClass.getName());
                         if (constraints.getInitialExpression() instanceof ClosureExpression) {
                             ClosureExpression ce = (ClosureExpression) constraints.getInitialExpression();
                             ((BlockStatement) ce.getCode()).addStatement(numberConstraintExpression);
                         } else {
-                            System.out.println("Do not know how to add constraints expression to non ClosureExpression " + constraints.getInitialExpression());
+                            System.err.println("Do not know how to add constraints expression to non ClosureExpression " + constraints.getInitialExpression());
                         }
                     } else {
-                        System.out.println("Adding sequence and constraints closure for class " + theClass.getName());
                         Statement[] constraintsStatement = {numberConstraintExpression};
                         BlockStatement closureBlock = new BlockStatement(constraintsStatement, null);
                         ClosureExpression constraintsClosure = new ClosureExpression(null, closureBlock);
