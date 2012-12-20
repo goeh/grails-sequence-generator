@@ -49,7 +49,7 @@ class SequenceGeneratorService {
                             try {
                                 log.trace("Scheduled flush")
                                 flush()
-                            } catch(InterruptedException e) {
+                            } catch (InterruptedException e) {
                                 log.info("Sequence flusher thread interrupted")
                                 flush()
                             } catch (Exception e) {
@@ -136,6 +136,22 @@ class SequenceGeneratorService {
         initSequence(name, group, tenant).next()
     }
 
+    boolean setNextNumber(Long currentNumber, Long newNumber, String name, String group = null, Long tenant = null) {
+        def key = generateKey(name, group, tenant)
+        def number = map[key]
+        def rval = false
+        if (number != null) {
+            synchronized (number) {
+                if(number.number == currentNumber) {
+                    number.number = newNumber
+                    rval = true
+                    log.debug "Sequence number [$key] set to $newNumber"
+                }
+            }
+        }
+        rval
+    }
+
     private void loadSequencesFromDatabase(Map m) {
         for (n in SequenceNumber.list()) {
             def d = n.definition
@@ -172,7 +188,7 @@ class SequenceGeneratorService {
     }
 
     private void flush() {
-        def dirtyKeys = map.findAll {it.value.dirty}.keySet()
+        def dirtyKeys = map.findAll { it.value.dirty }.keySet()
 
         if (dirtyKeys) {
             if (log.isDebugEnabled()) {
@@ -190,7 +206,7 @@ class SequenceGeneratorService {
             SequenceHandle handle = map.get(key)
             synchronized (handle) {
                 def n = handle.number
-                SequenceDefinition.withTransaction {tx ->
+                SequenceDefinition.withTransaction { tx ->
                     def seq = findNumber(name, group, tenant)
                     if (seq) {
                         seq = SequenceNumber.lock(seq.id)
@@ -243,6 +259,30 @@ class SequenceGeneratorService {
                 isNull('group')
             }
         }
+    }
+
+    List<Map> statistics(Long tenant = null) {
+        def numbers = SequenceNumber.createCriteria().list() {
+            definition {
+                if (tenant != null) {
+                    eq('tenantId', tenant)
+                } else {
+                    isNull('tenantId')
+                }
+                order 'name'
+            }
+            order 'group'
+        }
+        def result = []
+        for (n in numbers) {
+            def d = n.definition
+            def key = generateKey(d.name, n.group, d.tenantId)
+            def handle = map[key]
+            if (handle) {
+                result << [name: d.name, format: d.format, number: handle.getNumber()]
+            }
+        }
+        result
     }
 
 }

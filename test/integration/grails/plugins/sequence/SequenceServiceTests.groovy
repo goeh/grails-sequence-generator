@@ -21,7 +21,12 @@ class SequenceServiceTests extends GroovyTestCase {
 
     def sequenceGeneratorService
 
-    void testNoFormat() {
+    void tearDown() {
+        super.tearDown()
+        sequenceGeneratorService.reset()
+    }
+
+    def testNoFormat() {
         def name = "Company"
         sequenceGeneratorService.initSequence(name, null, null, 1)
         assertEquals 1L, sequenceGeneratorService.nextNumberLong(name)
@@ -30,30 +35,49 @@ class SequenceServiceTests extends GroovyTestCase {
 
         Thread.sleep(3000) // Wait for persister to finish
 
-        assertEquals "4", sequenceGeneratorService.nextNumber('Company')
-
-        sequenceGeneratorService.reset()
+        assertEquals "4", sequenceGeneratorService.nextNumber(name)
     }
 
-    void testFormat() {
-        def seq = sequenceGeneratorService.initSequence('Customer', null, null, 100, 'K-%04d')
+    def testFormat() {
+        def name = "Customer"
+        def seq = sequenceGeneratorService.initSequence(name, null, null, 100, 'K-%04d')
 
-        assertEquals 'K-0100', sequenceGeneratorService.nextNumber('Customer')
-        assertEquals 'K-0101', sequenceGeneratorService.nextNumber('Customer')
-        assertEquals 'K-0102', sequenceGeneratorService.nextNumber('Customer')
+        assertEquals 'K-0100', sequenceGeneratorService.nextNumber(name)
+        assertEquals 'K-0101', sequenceGeneratorService.nextNumber(name)
+        assertEquals 'K-0102', sequenceGeneratorService.nextNumber(name)
 
         Thread.sleep(3000) // Wait for persister to finish
 
-        assertEquals 'K-0103', sequenceGeneratorService.nextNumber('Customer')
+        assertEquals 'K-0103', sequenceGeneratorService.nextNumber(name)
 
         //sequenceGeneratorService.save()
 
         assertEquals 104, seq.number
-
-        sequenceGeneratorService.reset()
     }
 
-    void testThreads() {
+    def testSetNumber() {
+        def name = "Ticket"
+        def seq = sequenceGeneratorService.initSequence(name, null, null, 121001)
+
+        assertEquals '121001', sequenceGeneratorService.nextNumber(name)
+        assertEquals '121002', sequenceGeneratorService.nextNumber(name)
+        assertEquals '121003', sequenceGeneratorService.nextNumber(name)
+
+        assert !sequenceGeneratorService.setNextNumber(121003, 131001, name)
+        assert sequenceGeneratorService.setNextNumber(121004, 131001, name)
+
+        assertEquals '131001', sequenceGeneratorService.nextNumber(name)
+        assertEquals '131002', sequenceGeneratorService.nextNumber(name)
+        assertEquals '131003', sequenceGeneratorService.nextNumber(name)
+
+        sequenceGeneratorService.reset()
+
+        assertEquals '131004', sequenceGeneratorService.nextNumber(name)
+        assertEquals '131005', sequenceGeneratorService.nextNumber(name)
+        assertEquals '131006', sequenceGeneratorService.nextNumber(name)
+    }
+
+    def testThreads() {
         def sequenceName = 'ThreadTest'
 
         final int THREADS = 100
@@ -107,8 +131,6 @@ class SequenceServiceTests extends GroovyTestCase {
         Thread.sleep(3000) // Wait for persister to finish
 
         assertEquals 1001 + THREADS * NUMBERS, sequenceGeneratorService.nextNumberLong(sequenceName)
-
-        sequenceGeneratorService.reset()
     }
 
     def testDomainMethod() {
@@ -117,24 +139,51 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals "01001", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01002", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01003", new SequenceTestEntity().getNextSequenceNumber()
+    }
 
-        sequenceGeneratorService.reset()
+    def testBeforeValidate() {
+        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000)
+        def test = new SequenceTestEntity(name: "TEST")
+        assert test.respondsTo("beforeValidate")
+        assert test.number == null
+        test.beforeValidate()
+        assert test.number == "01004"
+    }
+
+    def testStatistics() {
+        sequenceGeneratorService.initSequence('Foo', null, null, 25)
+        sequenceGeneratorService.initSequence('Bar', null, null, 50, 'B%d')
+
+        5.times {
+            sequenceGeneratorService.nextNumber('Foo')
+            sequenceGeneratorService.nextNumber('Bar')
+        }
+
+        sequenceGeneratorService.flush()
+
+        def stats = sequenceGeneratorService.statistics()
+        println "stats=$stats"
+        def foo = stats.find { it.name == 'Foo' }
+        assert foo != null
+        assert foo.format == '%d'
+        assert foo.number == 30L
+        def bar = stats.find { it.name == 'Bar' }
+        assert bar != null
+        assert bar.name == 'Bar'
+        assert bar.format == 'B%d'
+        assert bar.number == 55L
     }
 
     def testClassArgument() {
-        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
-        assertEquals "01004", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
         assertEquals "01005", sequenceGeneratorService.nextNumber(SequenceTestEntity)
         assertEquals "01006", sequenceGeneratorService.nextNumber(SequenceTestEntity)
-
-        sequenceGeneratorService.reset()
+        assertEquals "01007", sequenceGeneratorService.nextNumber(SequenceTestEntity)
     }
 
     def testStartWithZero() {
         sequenceGeneratorService.initSequence("Zero", null, null, 0)
         assertEquals "0", sequenceGeneratorService.nextNumber("Zero")
-
-        sequenceGeneratorService.reset()
     }
 
     def testMultiTenant() {
@@ -152,16 +201,14 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals 203, sequenceGeneratorService.nextNumberLong("TenantTest", null, 2)
         assertEquals 101, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
         assertEquals 102, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
-
-        sequenceGeneratorService.reset()
     }
 
     def testTerminate() {
-        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
-        assertEquals "01000", new SequenceTestEntity().getNextSequenceNumber()
-        assertEquals "01001", new SequenceTestEntity().getNextSequenceNumber()
-        assertEquals "01002", new SequenceTestEntity().getNextSequenceNumber()
-        assertEquals "01003", new SequenceTestEntity().getNextSequenceNumber()
+        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
+        assertEquals "01008", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "01009", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "01010", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "01011", new SequenceTestEntity().getNextSequenceNumber()
 
         def t1 = System.currentTimeMillis()
         sequenceGeneratorService.terminate()
@@ -171,13 +218,4 @@ class SequenceServiceTests extends GroovyTestCase {
         assertTrue((t2 - t1) < 1000)
     }
 
-    def testBeforeValidate() {
-        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000)
-        def test = new SequenceTestEntity(name: "TEST")
-        assert test.respondsTo("beforeValidate")
-        assert test.number == null
-        test.beforeValidate()
-        assert test.number == '1000'
-        sequenceGeneratorService.reset()
-    }
 }

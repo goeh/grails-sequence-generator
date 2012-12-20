@@ -43,6 +43,7 @@ class SequenceHandle implements Serializable {
     }
 
     public void setNumber(long n) {
+        dirty = true
         this.@number.set(n)
     }
 
