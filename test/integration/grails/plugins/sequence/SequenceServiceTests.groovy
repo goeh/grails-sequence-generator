@@ -82,14 +82,14 @@ class SequenceServiceTests extends GroovyTestCase {
                 Thread.sleep(50 + new Random().nextInt(50))
             }
         }
-        threads.each {it.join()}  // Wait for all threads to finish.
+        threads.each { it.join() }  // Wait for all threads to finish.
 
         long time = 0L
-        slots.eachWithIndex {arr, i ->
+        slots.eachWithIndex { arr, i ->
             def end = arr.size() - 1
             for (int n = 1; n < end; n++) {
                 int nbr = arr[n]
-                slots.eachWithIndex {other, l ->
+                slots.eachWithIndex { other, l ->
                     if ((l != i) && other.contains(nbr)) {
                         println "slot[$i] = ${slots[i][1..-1].join(',')}"
                         println "slot[$l] = ${slots[l][1..-1].join(',')}"
@@ -168,6 +168,16 @@ class SequenceServiceTests extends GroovyTestCase {
         def t2 = System.currentTimeMillis()
 
         assertFalse sequenceGeneratorService.persisterRunning
-        assertTrue ((t2 - t1) < 1000)
+        assertTrue((t2 - t1) < 1000)
+    }
+
+    def testBeforeValidate() {
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000)
+        def test = new SequenceTestEntity(name: "TEST")
+        assert test.respondsTo("beforeValidate")
+        assert test.number == null
+        test.beforeValidate()
+        assert test.number == '1000'
+        sequenceGeneratorService.reset()
     }
 }

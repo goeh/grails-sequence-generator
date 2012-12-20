@@ -23,16 +23,12 @@ getNextSequenceNumber() method at runtime.
 
 ## Road Map
 
-### beforeVerify
-The current SequenceEntity AST transformation just adds the number property and it's constraints to the annotated domain class.
-It should also add the following code into beforeVerify()
-
-    beforeVerify() {
-        if(! number) {
-            number = getNextSequenceNumber()
-        }
-    }
-
 ### Admin UI
 Provide a user interface for managing sequence definitions.
 Administrators must be able to change number format and next available number.
+
+### Optimization
+When a sequence number is accessed first time after JVM boot *all* sequences are initialized by
+SequenceGeneratorService#loadSequencesFromDatabase(). This becomes a problem in an application
+with lots of sequences (multi-tenant environments).
+Change the init-implementation to lazy load only the requested sequence from database.
