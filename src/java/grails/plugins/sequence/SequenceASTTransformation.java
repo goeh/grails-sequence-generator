@@ -84,9 +84,11 @@ public class SequenceASTTransformation implements ASTTransformation {
                         BlockStatement closureBlock = new BlockStatement(constraintsStatement, null);
                         ClosureExpression constraintsClosure = new ClosureExpression(null, closureBlock);
                         theClass.addProperty("constraints", Modifier.STATIC | Modifier.PUBLIC, ClassHelper.OBJECT_TYPE, constraintsClosure, null, null);
-
                     }
                 }
+
+                BeforeValidateInjection.generate(theClass, propertyName);
+
                 VariableScopeVisitor scopeVisitor = new VariableScopeVisitor(sourceUnit);
                 scopeVisitor.visitClass(theClass);
             }
