@@ -17,41 +17,53 @@
 
 package grails.plugins.sequence
 
+import groovy.transform.CompileStatic
+import org.springframework.dao.OptimisticLockingFailureException
+import org.springframework.jmx.export.annotation.ManagedAttribute
+import org.springframework.jmx.export.annotation.ManagedOperation
+import org.springframework.jmx.export.annotation.ManagedResource
+
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * A service that provide sequence counters (for customer numbers, invoice numbers, etc)
  * This service has two primary methods: nextNumber() and nextNumberLong().
  */
+@ManagedResource(description = "Grails Sequence Generator")
 class SequenceGeneratorService {
 
     static transactional = false
 
     def grailsApplication
 
-    private static final Map myMap = [:].asSynchronized()
+    private static final Map<String, SequenceHandle> activeSequences = new ConcurrentHashMap<String, SequenceHandle>()
 
+    boolean keepGoing
     boolean persisterRunning
-    boolean initialized
-
     private Thread persisterThread
 
-    private Map getMap() {
-        if (!initialized) {
-            synchronized (myMap) {
-                if (!initialized) {
-                    loadSequencesFromDatabase(myMap)
-
+    private void initPersister() {
+        if (persisterThread == null) {
+            synchronized (activeSequences) {
+                if (persisterThread == null) {
                     def interval = 1000 * (grailsApplication.config.sequence.flushInterval ?: 60)
-                    persisterRunning = true
                     persisterThread = new Thread("GrailsSequenceGenerator")
                     persisterThread.start {
-                        while (persisterRunning) {
-                            Thread.sleep(interval)
+                        persisterRunning = true
+                        keepGoing = true
+                        log.info "Sequence persister thread started with [$interval ms] flush interval"
+                        while (keepGoing) {
                             try {
+                                Thread.currentThread().sleep(interval)
                                 log.trace("Scheduled flush")
-                                flush()
+                                synchronized (activeSequences) {
+                                    flush()
+                                }
                             } catch (InterruptedException e) {
                                 log.info("Sequence flusher thread interrupted")
-                                flush()
+                                synchronized (activeSequences) {
+                                    flush()
+                                }
                             } catch (Exception e) {
                                 if (log != null) {
                                     log.error "Failed to flush sequences to database!", e
@@ -60,51 +72,60 @@ class SequenceGeneratorService {
                                 }
                             }
                         }
+                        persisterRunning = false
+                        log.info "Sequence persister thread stopped"
                     }
 
                     Runtime.runtime.addShutdownHook {
                         terminate()
                     }
-
-                    initialized = true
                 }
             }
         }
-        return myMap
     }
 
+    @CompileStatic
     SequenceHandle initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null) {
-        doInitSequence(map, clazz.simpleName, group, tenant, start, format)
+        doInitSequence(clazz.simpleName, group, tenant, start, format)
     }
 
+    @CompileStatic
     SequenceHandle initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null) {
-        doInitSequence(map, name, group, tenant, start, format)
+        doInitSequence(name, group, tenant, start, format)
     }
 
-    private SequenceHandle doInitSequence(Map m, String name, String group = null, Long tenant = null, Long start = null, String format = null) {
+    private SequenceHandle doInitSequence(String name, String group, Long tenant, Long start, String format) {
         def key = generateKey(name, group, tenant)
-        def h = m.get(key)
-        if (!h) {
-            synchronized (m) {
-                h = m.get(key)
-                if (!h) {
-                    def config = grailsApplication.config.sequence
-                    if (start == null) {
-                        start = config."$name".start ?: 1L
+        def h = activeSequences.get(key)
+        if (h == null) {
+            synchronized (activeSequences) {
+                h = activeSequences.get(key)
+                if (h == null) {
+                    def seq = findNumber(name, group, tenant)
+                    if (seq != null) {
+                        h = seq.toHandle()
+                        log.debug "Loaded existing sequence [$key] starting at [${h.number}] with format [${h.format}]"
+                    } else {
+                        def config = grailsApplication.config.sequence
+                        if (start == null) {
+                            start = config."$name".initPersister ?: 1L
+                        }
+                        if (!format) {
+                            format = config."$name".format ?: '%d'
+                        }
+                        h = createHandle(start, format)
+                        log.debug "Created new sequence [$key] starting at [${h.number}] with format [${h.format}]"
                     }
-                    if (!format) {
-                        format = config."$name".format ?: '%d'
-                    }
-                    h = createHandle(start, format)
-                    m.put(key, h)
-                    log.debug "Created new sequence $key with format [$format]"
+                    activeSequences.put(key, h)
                 }
             }
+            initPersister()
         }
         return h
     }
 
-    private String generateKey(String name, String group, Long tenant) {
+    @CompileStatic
+    private String generateKey(final String name, final String group, final Long tenant) {
         final StringBuilder s = new StringBuilder()
         if (name != null) {
             s.append(name)
@@ -120,76 +141,154 @@ class SequenceGeneratorService {
         return s.toString()
     }
 
-    private SequenceHandle createHandle(Long start, String format) {
+    private SequenceHandle getHandle(String name, String group = null, Long tenant = null) {
+        def key = generateKey(name, group, tenant)
+        def h = activeSequences.get(key)
+        if (h == null) {
+            def seq = findNumber(name, group, tenant)
+            if (seq != null) {
+                h = seq.toHandle()
+                log.debug "Loaded existing sequence [$key] starting at [${h.number}] with format [${h.format}]"
+            } else {
+                def config = grailsApplication.config.sequence
+                def start = config."$name".initPersister ?: 1L
+                def format = config."$name".format ?: '%d'
+                h = createHandle(start, format)
+                log.debug "Created new sequence [$key] starting at [${h.number}] with format [${h.format}]"
+            }
+            synchronized (activeSequences) {
+                SequenceHandle tmp = activeSequences.get(key)
+                if (tmp != null) {
+                    h = tmp
+                } else {
+                    activeSequences.put(key, h)
+                }
+            }
+            initPersister()
+        }
+
+        return h
+    }
+
+    @CompileStatic
+    private SequenceHandle createHandle(final Long start, final String format) {
         new SequenceHandle(start, format)
     }
 
+    @CompileStatic
     String nextNumber(Class clazz, String group = null, Long tenant = null) {
-        initSequence(clazz.simpleName, group, tenant).nextFormatted()
+        SequenceHandle h = initSequence(clazz.simpleName, group, tenant)
+        synchronized (h) {
+            return h.nextFormatted()
+        }
     }
 
+    @CompileStatic
     String nextNumber(String name, String group = null, Long tenant = null) {
-        initSequence(name, group, tenant).nextFormatted()
+        SequenceHandle h = initSequence(name, group, tenant)
+        synchronized (h) {
+            return h.nextFormatted()
+        }
     }
 
+    @CompileStatic
     Long nextNumberLong(String name, String group = null, Long tenant = null) {
-        initSequence(name, group, tenant).next()
+        SequenceHandle h = initSequence(name, group, tenant)
+        synchronized (h) {
+            return h.next()
+        }
     }
 
+    @CompileStatic
     boolean setNextNumber(Long currentNumber, Long newNumber, String name, String group = null, Long tenant = null) {
-        def key = generateKey(name, group, tenant)
-        def number = map[key]
         def rval = false
-        if (number != null) {
-            synchronized (number) {
-                if(number.number == currentNumber) {
-                    number.number = newNumber
-                    rval = true
-                    log.debug "Sequence number [$key] set to $newNumber"
+        if (currentNumber != newNumber) {
+            SequenceHandle h = getHandle(name, group, tenant)
+            if (h.number == currentNumber) {
+                synchronized (h) {
+                    if (h.number == currentNumber) {
+                        h.number = newNumber
+                        rval = true
+                        log.debug "Sequence [$currentNumber] changed to [$newNumber]"
+                    }
                 }
             }
         }
         rval
     }
 
-    private void loadSequencesFromDatabase(Map m) {
-        for (n in SequenceNumber.list()) {
-            def d = n.definition
-            doInitSequence(m, d.name, n.group, d.tenantId, n.number, d.format).setNumber(n.number)
+    Long refresh(Class clazz, String group = null, Long tenant = null) {
+        refresh(clazz.simpleName, group, tenant)
+    }
+
+    Long refresh(String name, String group = null, Long tenant = null) {
+        SequenceNumber n = findNumber(name, group, tenant)
+        Long number
+        if (n) {
+            SequenceHandle h = getHandle(name, group, tenant)
+            if (h) {
+                synchronized (h) {
+                    if (h.dirty) {
+                        number = h.number
+                    } else {
+                        SequenceNumber.withTransaction {
+                            n = SequenceNumber.lock(n.id)
+                            number = n.number
+                            h.setNumber(number)
+                        }
+                    }
+                }
+            }
         }
-        log.debug "Sequences restored from database $m"
+        return number
     }
 
+    @CompileStatic
     private void terminate() {
-        persisterRunning = false
-        persisterThread.interrupt()
-        persisterThread = null
-        log.info "sequences terminated $map"
-        myMap.clear()
-        initialized = false
+        keepGoing = false
+        Thread t = persisterThread
+        if (t != null) {
+            synchronized (t) {
+                if (persisterThread != null) {
+                    persisterThread = null
+                    t.interrupt()
+                    try {
+                        t.join(5000L)
+                    } catch (InterruptedException e) {
+                        log.error("Error shutting down persister thread", e)
+                    } catch (NullPointerException e) {
+                        log.error("Persister thread was already terminated", e)
+                    } finally {
+                        log.debug "Sequence generator terminated"
+                        if (!activeSequences.isEmpty()) {
+                            log.debug "Active sequences: $activeSequences"
+                            activeSequences.clear()
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    def shutdown() {
+    @CompileStatic
+    synchronized void shutdown() {
+        keepGoing = false
         try {
-            flush()
+            synchronized (activeSequences) {
+                flush()
+            }
         } catch (Exception e) {
             log.error "Failed to save sequence counters!", e
         }
         terminate()
     }
 
-    void reset() {
-        log.debug "Resetting sequence counters..."
-        synchronized (myMap) {
-            flush()
-            myMap.clear()
-            loadSequencesFromDatabase(myMap)
-        }
+    private Collection<String> getDirtySequences() {
+        activeSequences.findAll { it.value.dirty }.keySet()
     }
 
     private void flush() {
-        def dirtyKeys = map.findAll { it.value.dirty }.keySet()
-
+        def dirtyKeys = getDirtySequences()
         if (dirtyKeys) {
             if (log.isDebugEnabled()) {
                 log.debug("Saving dirty sequences: $dirtyKeys")
@@ -198,22 +297,31 @@ class SequenceGeneratorService {
             log.trace("All sequences are clean")
         }
 
-        for (key in dirtyKeys) {
-            def parts = key.split('/').toList()
-            def name = parts[0]
-            def group = parts[1] ?: null
-            def tenant = parts[2] ? Long.valueOf(parts[2]) : null
-            SequenceHandle handle = map.get(key)
+        for (String key in dirtyKeys) {
+            List<String> parts = key.split('/').toList()
+            String name = parts[0]
+            String group = parts[1] ?: null
+            Long tenant = parts[2] ? Long.valueOf(parts[2]) : null
+            SequenceHandle handle = activeSequences.get(key)
             synchronized (handle) {
-                def n = handle.number
+                Long n = handle.number
                 SequenceDefinition.withTransaction { tx ->
-                    def seq = findNumber(name, group, tenant)
+                    SequenceNumber seq = findNumber(name, group, tenant)
                     if (seq) {
-                        seq = SequenceNumber.lock(seq.id)
+                        int counter = 10
+                        while (counter--) {
+                            try {
+                                seq = SequenceNumber.lock(seq.id)
+                                counter = 0
+                            } catch (OptimisticLockingFailureException e) {
+                                log.warn "SequenceNumber locked, retrying..."
+                                Thread.currentThread().sleep(25)
+                            }
+                        }
                         seq.number = n
                         seq.save(failOnError: true)
                     } else {
-                        def d = findDefinition(name, tenant)
+                        SequenceDefinition d = findDefinition(name, tenant)
                         if (d) {
                             d.addToNumbers(group: group, number: n)
                         } else {
@@ -231,7 +339,7 @@ class SequenceGeneratorService {
         }
     }
 
-    private SequenceDefinition findDefinition(String name, Long tenant) {
+    private SequenceDefinition findDefinition(final String name, final Long tenant) {
         SequenceDefinition.createCriteria().get {
             eq('name', name)
             if (tenant != null) {
@@ -243,7 +351,7 @@ class SequenceGeneratorService {
         }
     }
 
-    private SequenceNumber findNumber(String name, String group, Long tenant) {
+    private SequenceNumber findNumber(final String name, final String group, final Long tenant) {
         SequenceNumber.createCriteria().get {
             definition {
                 eq('name', name)
@@ -262,7 +370,10 @@ class SequenceGeneratorService {
     }
 
     List<Map> statistics(Long tenant = null) {
-        def numbers = SequenceNumber.createCriteria().list() {
+        synchronized (activeSequences) {
+            flush()
+        }
+        final List<SequenceNumber> numbers = SequenceNumber.createCriteria().list() {
             definition {
                 if (tenant != null) {
                     eq('tenantId', tenant)
@@ -273,11 +384,11 @@ class SequenceGeneratorService {
             }
             order 'group'
         }
-        def result = []
-        for (n in numbers) {
-            def d = n.definition
-            def key = generateKey(d.name, n.group, d.tenantId)
-            def handle = map[key]
+        final List<Map> result = []
+        for (SequenceNumber n in numbers) {
+            SequenceDefinition d = n.definition
+            String key = generateKey(d.name, n.group, d.tenantId)
+            SequenceHandle handle = activeSequences[key]
             if (handle) {
                 result << [name: d.name, format: d.format, number: handle.getNumber()]
             }
@@ -285,4 +396,19 @@ class SequenceGeneratorService {
         result
     }
 
+    @ManagedAttribute(description = "Sequence generator statistics")
+    String getStatistics() {
+        SequenceNumber.withTransaction {
+            statistics().collect { "${it.name}=${it.number}" }.join(', ')
+        }
+    }
+
+    @ManagedOperation(description = "Save dirty sequences to disc")
+    void sync() {
+        SequenceNumber.withTransaction {
+            synchronized (activeSequences) {
+                flush()
+            }
+        }
+    }
 }

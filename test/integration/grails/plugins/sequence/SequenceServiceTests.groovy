@@ -23,7 +23,7 @@ class SequenceServiceTests extends GroovyTestCase {
 
     void tearDown() {
         super.tearDown()
-        sequenceGeneratorService.reset()
+        sequenceGeneratorService.shutdown()
     }
 
     def testNoFormat() {
@@ -70,7 +70,7 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals '131002', sequenceGeneratorService.nextNumber(name)
         assertEquals '131003', sequenceGeneratorService.nextNumber(name)
 
-        sequenceGeneratorService.reset()
+        sequenceGeneratorService.shutdown()
 
         assertEquals '131004', sequenceGeneratorService.nextNumber(name)
         assertEquals '131005', sequenceGeneratorService.nextNumber(name)
@@ -90,21 +90,25 @@ class SequenceServiceTests extends GroovyTestCase {
         def threads = new ArrayList(THREADS)
         for (int i = 0; i < THREADS; i++) {
             def arr = slots[i] = new ArrayList(NUMBERS + 1)
-            threads << Thread.start {
+            def runnable = {
                 arr << System.currentTimeMillis()
                 SequenceDefinition.withNewSession {
-                    //println "Thread ${Thread.currentThread().id} starting..."
+                    //println "Thread ${Thread.currentThread().id} started"
                     NUMBERS.times {
                         arr << sequenceGeneratorService.nextNumberLong(sequenceName)
+                        Thread.currentThread().sleep(10)
                     }
                     arr[0] = System.currentTimeMillis() - arr[0]
                     if ((Thread.currentThread().id.intValue() % (THREADS / 3).intValue()) == 0) {
-                        sequenceGeneratorService.reset() // Be evil and reset all counters from db in the middle of the test.
+                        sequenceGeneratorService.refresh(sequenceName) // Be evil and reset all counters from db in the middle of the test.
                     }
                     //println "Thread ${Thread.currentThread().id} finished"
                 }
-                Thread.sleep(50 + new Random().nextInt(50))
             }
+            def t = new Thread(runnable, sequenceName + i)
+            t.priority = Thread.MIN_PRIORITY
+            threads << t
+            t.start()
         }
         threads.each { it.join() }  // Wait for all threads to finish.
 
@@ -142,12 +146,12 @@ class SequenceServiceTests extends GroovyTestCase {
     }
 
     def testBeforeValidate() {
-        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000)
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000)
         def test = new SequenceTestEntity(name: "TEST")
         assert test.respondsTo("beforeValidate")
         assert test.number == null
         test.beforeValidate()
-        assert test.number == "01004"
+        assert test.number == "1000"
     }
 
     def testStatistics() {
@@ -158,8 +162,6 @@ class SequenceServiceTests extends GroovyTestCase {
             sequenceGeneratorService.nextNumber('Foo')
             sequenceGeneratorService.nextNumber('Bar')
         }
-
-        sequenceGeneratorService.flush()
 
         def stats = sequenceGeneratorService.statistics()
         println "stats=$stats"
@@ -175,10 +177,10 @@ class SequenceServiceTests extends GroovyTestCase {
     }
 
     def testClassArgument() {
-        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
-        assertEquals "01005", sequenceGeneratorService.nextNumber(SequenceTestEntity)
-        assertEquals "01006", sequenceGeneratorService.nextNumber(SequenceTestEntity)
-        assertEquals "01007", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
+        assertEquals "01000", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        assertEquals "01001", sequenceGeneratorService.nextNumber(SequenceTestEntity)
+        assertEquals "01002", sequenceGeneratorService.nextNumber(SequenceTestEntity)
     }
 
     def testStartWithZero() {
@@ -203,19 +205,44 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals 102, sequenceGeneratorService.nextNumberLong("TenantTest", null, 1)
     }
 
-    def testTerminate() {
-        //sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1000, '%05d')
+    def testShutdown() {
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1008, '%05d')
         assertEquals "01008", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01009", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01010", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01011", new SequenceTestEntity().getNextSequenceNumber()
 
-        def t1 = System.currentTimeMillis()
-        sequenceGeneratorService.terminate()
-        def t2 = System.currentTimeMillis()
+        sequenceGeneratorService.shutdown()
 
-        assertFalse sequenceGeneratorService.persisterRunning
-        assertTrue((t2 - t1) < 1000)
+        assertFalse sequenceGeneratorService.keepGoing
+
+        assertEquals "01012", new SequenceTestEntity().getNextSequenceNumber()
+        assertTrue sequenceGeneratorService.persisterRunning
+        assertTrue sequenceGeneratorService.keepGoing
     }
 
+    def testRefresh() {
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 5001, '%04d')
+        assertEquals "5001", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "5002", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "5003", new SequenceTestEntity().getNextSequenceNumber()
+
+        sequenceGeneratorService.sync()
+
+        def n = SequenceNumber.createCriteria().get {
+            definition {
+                eq('name', SequenceTestEntity.class.simpleName)
+                isNull('tenantId')
+            }
+            isNull('group')
+        }
+        assertNotNull n
+
+        n.number = 2001
+        n.save(flush:true)
+
+        sequenceGeneratorService.refresh(SequenceTestEntity)
+
+        assertEquals "2001", new SequenceTestEntity().getNextSequenceNumber()
+    }
 }

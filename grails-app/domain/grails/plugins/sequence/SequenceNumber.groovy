@@ -32,6 +32,10 @@ class SequenceNumber {
         group column:'sequence_group'
     }
 
+    SequenceHandle toHandle() {
+        new SequenceHandle(number, definition.format)
+    }
+
     @Override
     String toString() {
         "$number"
