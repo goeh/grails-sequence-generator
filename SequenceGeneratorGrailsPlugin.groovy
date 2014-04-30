@@ -16,21 +16,25 @@
  */
 
 import grails.plugins.sequence.SequenceEntity
+import org.springframework.context.ApplicationContext
+import org.springframework.jmx.export.MBeanExporter
+import org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource
+import org.springframework.jmx.export.assembler.MetadataMBeanInfoAssembler
+import org.springframework.jmx.support.MBeanServerFactoryBean
+
+import javax.management.MBeanServer
+import javax.management.ObjectName
+import java.lang.management.ManagementFactory
 
 class SequenceGeneratorGrailsPlugin {
-    // the plugin version
-    def version = "0.9.5"
-    // the version or versions of Grails the plugin is designed for
-    def grailsVersion = "1.3 > *"
-    // the other plugins this plugin depends on
+    def version = "0.9.6"
+    def grailsVersion = "2.0 > *"
     def dependsOn = [:]
-    def loadAfter = ['domainClass','services']
-    // resources that are excluded from plugin packaging
+    def loadAfter = ['domainClass', 'services']
     def pluginExcludes = [
             "grails-app/views/error.gsp",
             "grails-app/domain/grails/plugins/sequence/SequenceTestEntity.groovy"
     ]
-
     def title = "Sequence Number Generator" // Headline display name of the plugin
     def author = "Goran Ehrsson"
     def authorEmail = "goran@technipelago.se"
@@ -39,64 +43,49 @@ A service that generate sequence numbers from different sequences, formats, etc.
 The method getNextSequenceNumber() is injected into all domain classes. It returns
 the next number for the sequence defined for the domain.
 '''
-
-    // URL to the plugin's documentation
     def documentation = "http://grails.org/plugin/sequence"
-
-    // License: one of 'APACHE', 'GPL2', 'GPL3'
     def license = "APACHE"
-
-    // Details of company behind the plugin (if there is one)
     def organization = [name: "Technipelago AB", url: "http://www.technipelago.se/"]
-
     // Any additional developers beyond the author specified above.
     //    def developers = [ [ name: "Joe Bloggs", email: "joe@bloggs.net" ]]
-
-    // Location of the plugin's issue tracker.
-    def issueManagement = [ system: "GITHUB", url: "https://github.com/goeh/grails-sequence/issues" ]
-
-    // Online location of the plugin's browseable source code.
-    def scm = [ url: "https://github.com/goeh/grails-sequence" ]
-
-    def doWithWebDescriptor = { xml ->
-        // TODO Implement additions to web.xml (optional), this event occurs before
-    }
+    def issueManagement = [system: "GITHUB", url: "https://github.com/goeh/grails-sequence/issues"]
+    def scm = [url: "https://github.com/goeh/grails-sequence"]
 
     def doWithSpring = {
-        // TODO Implement runtime spring config (optional)
-    }
-
-    def doWithDynamicMethods = { ctx ->
-        // TODO Implement registering dynamic methods to classes (optional)
+        //create/find the mbean server
+        mbeanServer(MBeanServerFactoryBean) {
+            locateExistingServerIfPossible = true
+        }
+        //use annotations for attributes/operations
+        jmxAttributeSource(AnnotationJmxAttributeSource)
+        assembler(MetadataMBeanInfoAssembler) {
+            attributeSource = jmxAttributeSource
+        }
+        //create an exporter that uses annotations
+        annotationExporter(MBeanExporter) {
+            server = mbeanServer
+            assembler = assembler
+            beans = [:]
+        }
     }
 
     def doWithApplicationContext = { applicationContext ->
         def config = application.config
         for (c in application.domainClasses) {
-            if(c.clazz.getAnnotation(SequenceEntity)) {
+            if (c.clazz.getAnnotation(SequenceEntity)) {
                 addDomainMethods(applicationContext, config, c.metaClass)
             }
         }
-    }
-
-    def onChange = { event ->
-        // TODO Implement code that is executed when any artefact that this plugin is
-        // watching is modified and reloaded. The event contains: event.source,
-        // event.application, event.manager, event.ctx, and event.plugin.
-    }
-
-    def onConfigChange = { event ->
-        // TODO Implement code that is executed when the project configuration changes.
-        // The event is the same as for 'onChange'.
+        registerJMX(applicationContext)
     }
 
     def onShutdown = { event ->
-        // TODO Implement code that is executed when the application shuts down (optional)
+        unregisterJMX()
     }
 
     private void addDomainMethods(ctx, config, MetaClass mc) {
         def service = ctx.getBean('sequenceGeneratorService')
-        mc.getNextSequenceNumber = {group = null ->
+        mc.getNextSequenceNumber = { group = null ->
             def name = delegate.class.simpleName
             def tenant = delegate.hasProperty('tenantId') ? delegate.tenantId : null
             def nbr
@@ -105,5 +94,18 @@ the next number for the sequence defined for the domain.
             }
             return nbr
         }
+    }
+
+    final String jmxObjectName = 'grails.plugin:name=SequenceGeneratorService,type=services'
+
+    private void registerJMX(ApplicationContext ctx) {
+        MBeanExporter annotationExporter = ctx.getBean("annotationExporter")
+        annotationExporter.beans."$jmxObjectName" = ctx.getBean("sequenceGeneratorService")
+        annotationExporter.registerBeans()
+    }
+
+    private void unregisterJMX() {
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer()
+        mbs.unregisterMBean(new ObjectName(jmxObjectName))
     }
 }
