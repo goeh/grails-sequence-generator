@@ -22,7 +22,7 @@ log4j = {
 
     warn   'org.mortbay.log'
 
-    //debug  'grails.app.services.grails.plugins.sequence'
+    debug  'grails.app.services.grails.plugins.sequence'
 }
 
 sequence.flushInterval = 5
