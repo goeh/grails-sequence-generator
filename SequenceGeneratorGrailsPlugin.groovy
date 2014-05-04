@@ -16,6 +16,8 @@
  */
 
 import grails.plugins.sequence.SequenceEntity
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationContext
 import org.springframework.jmx.export.MBeanExporter
 import org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource
@@ -27,7 +29,7 @@ import javax.management.ObjectName
 import java.lang.management.ManagementFactory
 
 class SequenceGeneratorGrailsPlugin {
-    def version = "0.9.6"
+    def version = "0.9.8"
     def grailsVersion = "2.0 > *"
     def dependsOn = [:]
     def loadAfter = ['domainClass', 'services']
@@ -50,6 +52,10 @@ the next number for the sequence defined for the domain.
     //    def developers = [ [ name: "Joe Bloggs", email: "joe@bloggs.net" ]]
     def issueManagement = [system: "GITHUB", url: "https://github.com/goeh/grails-sequence/issues"]
     def scm = [url: "https://github.com/goeh/grails-sequence"]
+
+    private Logger LOG = LoggerFactory.getLogger('grails.plugins.sequence.SequenceGeneratorGrailsPlugin')
+
+    private final String JMX_OBJECT_NAME = ':name=SequenceGeneratorService,type=services'
 
     def doWithSpring = {
         //create/find the mbean server
@@ -76,11 +82,11 @@ the next number for the sequence defined for the domain.
                 addDomainMethods(applicationContext, config, c.metaClass)
             }
         }
-        registerJMX(applicationContext)
+        registerJMX(applicationContext, application.metadata.getApplicationName() + JMX_OBJECT_NAME)
     }
 
     def onShutdown = { event ->
-        unregisterJMX()
+        unregisterJMX(event.ctx, application.metadata.getApplicationName() + JMX_OBJECT_NAME)
     }
 
     private void addDomainMethods(ctx, config, MetaClass mc) {
@@ -96,16 +102,31 @@ the next number for the sequence defined for the domain.
         }
     }
 
-    final String jmxObjectName = 'grails.plugin:name=SequenceGeneratorService,type=services'
-
-    private void registerJMX(ApplicationContext ctx) {
-        MBeanExporter annotationExporter = ctx.getBean("annotationExporter")
-        annotationExporter.beans."$jmxObjectName" = ctx.getBean("sequenceGeneratorService")
-        annotationExporter.registerBeans()
+    private void registerJMX(ApplicationContext ctx, String jmxObjectName) {
+        try {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer()
+            if (mbs.isRegistered(new ObjectName(jmxObjectName))) {
+                LOG.info("MBean $jmxObjectName already registered")
+            } else {
+                MBeanExporter annotationExporter = ctx.getBean("annotationExporter")
+                annotationExporter.beans."$jmxObjectName" = ctx.getBean("sequenceGeneratorService")
+                annotationExporter.registerBeans()
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to register $jmxObjectName", e)
+        }
     }
 
-    private void unregisterJMX() {
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer()
-        mbs.unregisterMBean(new ObjectName(jmxObjectName))
+    private void unregisterJMX(ApplicationContext ctx, String jmxObjectName) {
+        try {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer()
+            if (mbs.isRegistered(new ObjectName(jmxObjectName))) {
+                mbs.unregisterMBean(new ObjectName(jmxObjectName))
+            } else {
+                LOG.info("MBean $jmxObjectName not registered")
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to unregister $jmxObjectName", e)
+        }
     }
 }

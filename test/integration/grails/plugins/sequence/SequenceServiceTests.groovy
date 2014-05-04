@@ -17,8 +17,12 @@
 
 package grails.plugins.sequence
 
+import javax.management.MBeanServer
+import javax.management.ObjectName
+
 class SequenceServiceTests extends GroovyTestCase {
 
+    def grailsApplication
     def sequenceGeneratorService
 
     void tearDown() {
@@ -100,7 +104,8 @@ class SequenceServiceTests extends GroovyTestCase {
                     }
                     arr[0] = System.currentTimeMillis() - arr[0]
                     if ((Thread.currentThread().id.intValue() % (THREADS / 3).intValue()) == 0) {
-                        sequenceGeneratorService.refresh(sequenceName) // Be evil and reset all counters from db in the middle of the test.
+                        sequenceGeneratorService.refresh(sequenceName)
+                        // Be evil and reset all counters from db in the middle of the test.
                     }
                     //println "Thread ${Thread.currentThread().id} finished"
                 }
@@ -239,10 +244,23 @@ class SequenceServiceTests extends GroovyTestCase {
         assertNotNull n
 
         n.number = 2001
-        n.save(flush:true)
+        n.save(flush: true)
 
         sequenceGeneratorService.refresh(SequenceTestEntity)
 
         assertEquals "2001", new SequenceTestEntity().getNextSequenceNumber()
+    }
+
+    private ObjectName getJmxObjectName() {
+        new ObjectName(grailsApplication.metadata.getApplicationName() + ':name=SequenceGeneratorService,type=services')
+    }
+
+    def testMBean() {
+        sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1001, '%04d')
+        assertEquals "1001", new SequenceTestEntity().getNextSequenceNumber()
+        assertEquals "1002", new SequenceTestEntity().getNextSequenceNumber()
+
+        MBeanServer server = grailsApplication.mainContext.getBean('mbeanServer')
+        assertEquals "SequenceTestEntity=1003", server.getAttribute(jmxObjectName, 'Statistics')
     }
 }
