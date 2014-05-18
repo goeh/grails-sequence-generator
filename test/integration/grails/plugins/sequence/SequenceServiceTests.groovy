@@ -261,6 +261,6 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals "1002", new SequenceTestEntity().getNextSequenceNumber()
 
         MBeanServer server = grailsApplication.mainContext.getBean('mbeanServer')
-        assertEquals "SequenceTestEntity=1003", server.getAttribute(jmxObjectName, 'Statistics')
+        assertTrue server.getAttribute(jmxObjectName, 'Statistics').toString().contains("SequenceTestEntity=1003")
     }
 }

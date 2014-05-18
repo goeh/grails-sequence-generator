@@ -388,11 +388,8 @@ class SequenceGeneratorService {
         final List<Map> result = []
         for (SequenceNumber n in numbers) {
             SequenceDefinition d = n.definition
-            String key = generateKey(d.name, n.group, d.tenantId)
-            SequenceHandle handle = activeSequences[key]
-            if (handle) {
-                result << [name: d.name, format: d.format, number: handle.getNumber()]
-            }
+            SequenceHandle handle = getHandle(d.name, n.group, d.tenantId)
+            result << [name: d.name, format: d.format, number: handle.getNumber()]
         }
         result
     }
