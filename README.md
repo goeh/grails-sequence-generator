@@ -31,14 +31,14 @@ Number of seconds to wait before flushing in-memory sequence counters to disk.
 
     sequence.flushInterval = 300
     
-**sequence.<name>.format** (default %d)
+**sequence.(name).format** (default %d)
 
 Format to use for sequence numbers for a domain class. The name is the simple name of the domain class, without package.
 The number is formatted with *String#format(String, Object...)*.
 
     sequence.Customer.format = "%05d"
 
-**sequence.<name>.start** (default 1)
+**sequence.(name).start** (default 1)
 
 The starting sequence for a domain class. The name is the simple name of the domain class, without package.
 
@@ -57,25 +57,28 @@ An AST Transformation adds a *String* property called **number** to the domain c
 The property will have *maxSize:10* and *blank:false* constraints. But you can override this in the annotation.
  
     @SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = true) 
-    class Customer {
+    class CustomerOrder {
         ...
     }
 
 The AST Transformation will also add code in *beforeValidate()* that calls *getNextSequenceNumber()* to set the
-*number* property if it is not already set.
+"number" property if it is not already set.
 
 So the only thing you really have to do is to annotate your domain class with @SequenceEntity and the number
 property will be set to a new unique number before the domain instance is saved to the database.
  
-Maybe you ask: "Why not use database sequences?"
+**Maybe you ask: "Why not use database sequences?"**
 
-Well, database sequences use numbers only, this plugin is more flexible and lets you use String properties
-and prefix/suffix the number with characters. You can can sub-sequences to generate different numbers depending
-on application logic. Maybe domain instances of one category should use another sequence that the default.
+Well, a database sequence use numbers only and is very efficient but not so flexible.
+This plugin is more flexible and lets you use String properties and prefix/suffix the number with characters.
+You can can sub-sequences to generate different numbers depending on application logic.
+Maybe domain instances of one category should use another sequence that the default.
 This plugin also let you change the sequence number programatically.
 For example you could reset the sequence to start with YYYY0001 on the first of January every year.
  
 ## SequenceGeneratorService
+
+With *SequenceGeneratorService* you can interact with sequences. The following methods are available:
 
 **def initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
 
