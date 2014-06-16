@@ -29,7 +29,7 @@ import javax.management.ObjectName
 import java.lang.management.ManagementFactory
 
 class SequenceGeneratorGrailsPlugin {
-    def version = "0.9.9"
+    def version = "1.0-SNAPSHOT"
     def grailsVersion = "2.0 > *"
     def dependsOn = [:]
     def loadAfter = ['domainClass', 'services']
@@ -37,21 +37,20 @@ class SequenceGeneratorGrailsPlugin {
             "grails-app/views/error.gsp",
             "grails-app/domain/grails/plugins/sequence/SequenceTestEntity.groovy"
     ]
-    def title = "Sequence Number Generator" // Headline display name of the plugin
+    def title = "Sequence Number Generator"
     def author = "Goran Ehrsson"
     def authorEmail = "goran@technipelago.se"
     def description = '''
-A service that generate sequence numbers from different sequences, formats, etc.
-The method getNextSequenceNumber() is injected into all domain classes. It returns
-the next number for the sequence defined for the domain.
+A Grails service that generate sequence numbers from different sequences, formats, etc.
+You can control the starting number, the format and you can have different sequences based on application logic.
+The method getNextSequenceNumber() is injected into all domain classes annotated with @SequenceEntity.
+It returns the next number for the sequence defined for the domain class.
 '''
-    def documentation = "http://grails.org/plugin/sequence"
+    def documentation = "https://github.com/goeh/grails-sequence"
     def license = "APACHE"
     def organization = [name: "Technipelago AB", url: "http://www.technipelago.se/"]
-    // Any additional developers beyond the author specified above.
-    //    def developers = [ [ name: "Joe Bloggs", email: "joe@bloggs.net" ]]
-    def issueManagement = [system: "GITHUB", url: "https://github.com/goeh/grails-sequence/issues"]
-    def scm = [url: "https://github.com/goeh/grails-sequence"]
+    def issueManagement = [system: "github", url: "https://github.com/goeh/grails-sequence-generator/issues"]
+    def scm = [url: "https://github.com/goeh/grails-sequence-generator"]
 
     private Logger LOG = LoggerFactory.getLogger('grails.plugins.sequence.SequenceGeneratorGrailsPlugin')
 

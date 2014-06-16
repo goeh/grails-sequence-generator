@@ -109,7 +109,7 @@ class SequenceGeneratorService {
                     } else {
                         def config = grailsApplication.config.sequence
                         if (start == null) {
-                            start = config."$name".initPersister ?: 1L
+                            start = config."$name".start ?: (config."$name".initPersister ?: 1L)
                         }
                         if (!format) {
                             format = config."$name".format ?: '%d'
