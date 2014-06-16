@@ -20,7 +20,7 @@ sequential numbers to concurrent threads without problems.
 
 Sequences are persisted to database to survive server restarts.
 
-Domain classes annotated with grails.plugins.sequence.SequenceEntity
+Domain classes annotated with *grails.plugins.sequence.SequenceEntity*
 will get a 'number' property added at compile time and a getNextSequenceNumber() method at runtime.
 
 ## Configuration
@@ -44,7 +44,37 @@ The starting sequence for a domain class. The name is the simple name of the dom
 
     sequence.Customer.start = 1001
 
+## @SequenceEntity
 
+To enable a domain class for sequence counting you must annotate it with *grails.plugins.sequence.SequenceEntity*
+
+    @SequenceEntity
+    class Customer {
+        ...
+    }
+    
+An AST Transformation adds a *String* property called **number** to the domain class at compile time.
+The property will have *maxSize:10* and *blank:false* constraints. But you can override this in the annotation.
+ 
+    @SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = true) 
+    class Customer {
+        ...
+    }
+
+The AST Transformation will also add code in *beforeValidate()* that calls *getNextSequenceNumber()* to set the
+*number* property if it is not already set.
+
+So the only thing you really have to do is to annotate your domain class with @SequenceEntity and the number
+property will be set to a new unique number before the domain instance is saved to the database.
+ 
+Maybe you ask: "Why not use database sequences?"
+
+Well, database sequences use numbers only, this plugin is more flexible and lets you use String properties
+and prefix/suffix the number with characters. You can can sub-sequences to generate different numbers depending
+on application logic. Maybe domain instances of one category should use another sequence that the default.
+This plugin also let you change the sequence number programatically.
+For example you could reset the sequence to start with YYYY0001 on the first of January every year.
+ 
 ## SequenceGeneratorService
 
 **def initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
