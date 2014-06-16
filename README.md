@@ -71,7 +71,7 @@ property will be set to a new unique number before the domain instance is saved 
 
 Well, a database sequence use numbers only and is very efficient but not so flexible.
 This plugin is more flexible and lets you use String properties and prefix/suffix the number with characters.
-You can can sub-sequences to generate different numbers depending on application logic.
+You can use sub-sequences to generate different numbers depending on application logic.
 Maybe domain instances of one category should use another sequence that the default.
 This plugin also let you change the sequence number programatically.
 For example you could reset the sequence to start with YYYY0001 on the first of January every year.
@@ -137,6 +137,18 @@ name   | Name of domain class
 format | The sequence number format
 number | Next number that will be returned for this sequence
 
+## REST Service
+
+*SequenceGeneratorController* provides two methods that accepts JSON requests to interact with sequences.
+Make sure you protect this controller with appropriate access control.
+
+**list(String name, String group)**
+
+Returns a list of sequences in JSON format. See **SequenceGeneratorService#getStatistics()**
+
+**update(String name, String group, Long current, Long next)**
+
+Update the next number for a sequence. See *SequenceGeneratorService#setNextNumber()*
 
 ## Road Map
 
