@@ -166,12 +166,19 @@ Update the next number for a sequence. See *SequenceGeneratorService#setNextNumb
 
 You can check sequence statistics from a JMX client using the registered JMX bean *:name=SequenceGeneratorService,type=services*. 
 
+## Known Issues
+
+The current implementation keep sequences in memory for performance reasons and therefore is does not support clustering.
+
 ## Road Map
 
 ### Admin UI
 Provide a user interface for managing sequence definitions.
 Administrators must be able to change number format and next available number.
 
+### Pluggable Generators
+Provide configurable/pluggable sequence generators. The first custom generator I have in mind is an external microservice
+(maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation lacks.
 
 ## Miscellaneous
 
