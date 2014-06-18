@@ -20,8 +20,11 @@ sequential numbers to concurrent threads without problems.
 
 Sequences are persisted to database to survive server restarts.
 
+Because it's common to have sequence properties on domain classes (customer number, order number, etc)
+there is an annotation that does all the plumbing for you.
 Domain classes annotated with *grails.plugins.sequence.SequenceEntity*
-will get a 'number' property added at compile time and a getNextSequenceNumber() method at runtime.
+will get a *number* property added at compile that will be initialized with
+a unique sequence number when the domain instance is saved to database.
 
 ## Configuration
 
@@ -33,20 +36,22 @@ Number of seconds to wait before flushing in-memory sequence counters to disk.
     
 **sequence.(name).format** (default %d)
 
-Format to use for sequence numbers for a domain class. The name is the simple name of the domain class, without package.
+Format to use for sequence numbers. The name is the name of the sequence (simple name of the domain class).
 The number is formatted with *String#format(String, Object...)*.
 
     sequence.Customer.format = "%05d"
 
 **sequence.(name).start** (default 1)
 
-The starting sequence for a domain class. The name is the simple name of the domain class, without package.
+The starting sequence for a domain class. The name is the name of the sequence (simple name of the domain class).
 
     sequence.Customer.start = 1001
 
 ## @SequenceEntity
 
-To enable a domain class for sequence counting you must annotate it with *grails.plugins.sequence.SequenceEntity*
+If you have a sequence property on a domain class, for example a customer number property, you could add code
+in beforeValidate() or beforeInsert() that assigns a sequence number with *sequenceGeneratorService.nextNumber(this.class)*.
+But the *grails.plugins.sequence.SequenceEntity* annotation makes this much easier. It does the plumbing for you.
 
     @SequenceEntity
     class Customer {
@@ -61,8 +66,7 @@ The property will have *maxSize:10* and *blank:false* constraints. But you can o
         ...
     }
 
-The AST Transformation will also add code in *beforeValidate()* that calls *getNextSequenceNumber()* to set the
-"number" property if it is not already set.
+The AST Transformation will also add code in *beforeValidate()* that sets the *number* property if it is not already set.
 
 So the only thing you really have to do is to annotate your domain class with @SequenceEntity and the number
 property will be set to a new unique number before the domain instance is saved to the database.
@@ -80,27 +84,35 @@ For example you could reset the sequence to start with YYYY0001 on the first of 
 
 With *SequenceGeneratorService* you can interact with sequences. The following methods are available:
 
-**def initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
+**def initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null)**
 
-Initialize/create a new sequence counter for a domain class.
+Create a new sequence counter and initialize it with a starting number (default 1).
 
 Parameter   | Description
 ----------- | ---------------------
-clazz       | Domain class to generate sequences for
+name        | Name of sequence
 group       | If you need multiple sequences for the same domain class based on some application logic you can use groups to create sub-sequences
 tenant      | Tenant ID in a multi-tenant environment
 start       | The sequence will start at this number
 format      | The number format returned by *nextNumber()* uses String#format(String, Object...)
 
-**String nextNumber(Class clazz, String group = null, Long tenant = null)**
+**def initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
 
-Returns the next number in the specified sequence.
+Same as above but takes a domain class instead of sequence name. Class#getSimpleName() will be used as sequence name.
+
+**String nextNumber(String name, String group = null, Long tenant = null)**
+
+Returns the next number in the specified sequence. The number is formatted with the sequence's defined format.
 
 Parameter   | Description
 ----------- | ---------------------
-clazz       | Domain class to get sequence for
-group       | Optional sub-sequence if multiple sequence counters exists for the domain class
+name        | Name of sequence
+group       | Optional sub-sequence if multiple sequence counters exists for the same name / domain class
 tenant      | Tenant ID in a multi-tenant environment
+
+**String nextNumber(Class clazz, String group = null, Long tenant = null)**
+
+Same as above but takes a domain class instead of sequence name. Class#getSimpleName() will be used as sequence name.
 
 **boolean setNextNumber(Long currentNumber, Long newNumber, String name, String group = null, Long tenant = null)**
 
@@ -113,8 +125,8 @@ Parameter     | Description
 ------------- | ---------------------
 currentNumber | The caller's view of what the current number is
 newNumber     | The number to set. The next call to *nextNumber()* will get this number
-name          | Name of domain class to set number for
-group         | Optional sub-sequence if multiple sequence counters exists for the domain class
+name          | Name of sequence to set number for
+group         | Optional sub-sequence if multiple sequence counters exists for the same name / domain class
 tenant        | Tenant ID in a multi-tenant environment
 
 **Long refresh(Class clazz, String group = null, Long tenant = null)**
@@ -133,7 +145,7 @@ Statistics are returned as a List of Maps with the following keys:
 
 Key    | Value
 ------ | -----------------
-name   | Name of domain class
+name   | Name of the sequence
 format | The sequence number format
 number | Next number that will be returned for this sequence
 
@@ -149,6 +161,10 @@ Returns a list of sequences in JSON format. See **SequenceGeneratorService#getSt
 **update(String name, String group, Long current, Long next)**
 
 Update the next number for a sequence. See *SequenceGeneratorService#setNextNumber()*
+
+## JMX
+
+You can check sequence statistics from a JMX client using the registered JMX bean *:name=SequenceGeneratorService,type=services*. 
 
 ## Road Map
 
