@@ -43,7 +43,7 @@ The number is formatted with *String#format(String, Object...)*.
 
 **sequence.(name).start** (default 1)
 
-The starting sequence for a domain class. The name is the name of the sequence (simple name of the domain class).
+The starting number when a sequence is first initialized. The name is the name of the sequence (simple name of the domain class).
 
     sequence.Customer.start = 1001
 
@@ -51,7 +51,7 @@ The starting sequence for a domain class. The name is the name of the sequence (
 
 If you have a sequence property on a domain class, for example a customer number property, you could add code
 in beforeValidate() or beforeInsert() that assigns a sequence number with *sequenceGeneratorService.nextNumber(this.class)*.
-But the *grails.plugins.sequence.SequenceEntity* annotation makes this much easier. It does the plumbing for you.
+But the *grails.plugins.sequence.SequenceEntity* annotation makes this much easier. It does all the plumbing for you.
 
     @SequenceEntity
     class Customer {
@@ -59,7 +59,7 @@ But the *grails.plugins.sequence.SequenceEntity* annotation makes this much easi
     }
     
 An AST Transformation adds a *String* property called **number** to the domain class at compile time.
-The property will have *maxSize:10* and *blank:false* constraints. But you can override this in the annotation.
+The property will have *maxSize:10*, *unique:true*, and *blank:false* constraints. But you can override this in the annotation.
  
     @SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = true) 
     class CustomerOrder {
@@ -68,7 +68,7 @@ The property will have *maxSize:10* and *blank:false* constraints. But you can o
 
 The AST Transformation will also add code in *beforeValidate()* that sets the *number* property if it is not already set.
 
-So the only thing you really have to do is to annotate your domain class with @SequenceEntity and the number
+So the only thing you really have to do is to annotate your domain class with *@SequenceEntity* and the number
 property will be set to a new unique number before the domain instance is saved to the database.
  
 **Maybe you ask: "Why not use database sequences?"**
@@ -152,7 +152,7 @@ number | Next number that will be returned for this sequence
 ## REST Service
 
 *SequenceGeneratorController* provides two methods that accepts JSON requests to interact with sequences.
-Make sure you protect this controller with appropriate access control.
+**Make sure you protect this controller with appropriate access control**.
 
 **list(String name, String group)**
 
