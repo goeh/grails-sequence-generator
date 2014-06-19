@@ -114,6 +114,11 @@ tenant      | Tenant ID in a multi-tenant environment
 
 Same as above but takes a domain class instead of sequence name. Class#getSimpleName() will be used as sequence name.
 
+**Long nextNumberLong(String name, String group = null, Long tenant = null)**
+
+If you don't need formatted numbers and just want a number sequence you can use *nextNumberLong()*.
+It works the same way as *nextNumber()* but returns a *Long* instead of a formatted *String*.
+
 **boolean setNextNumber(Long currentNumber, Long newNumber, String name, String group = null, Long tenant = null)**
 
 Sets the next number for a sequence counter.
@@ -168,17 +173,15 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 
 ## Known Issues
 
-The current implementation keep sequences in memory for performance reasons and therefore is does not support clustering.
+- The current implementation keep sequences in memory for performance reasons and therefore is cannot be used in clustered environments.
 
 ## Road Map
 
-### Admin UI
-Provide a user interface for managing sequence definitions.
-Administrators must be able to change number format and next available number.
+- Provide a user interface for managing sequence definitions.
+  Administrators must be able to change number format and next available number.
 
-### Pluggable Generators
-Provide configurable/pluggable sequence generators. The first custom generator I have in mind is an external microservice
-(maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation lacks.
+- Provide configurable/pluggable sequence generators. The first custom generator I have in mind is an external microservice
+  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation lacks.
 
 ## Miscellaneous
 
