@@ -24,6 +24,7 @@ class SequenceServiceTests extends GroovyTestCase {
 
     def grailsApplication
     def sequenceGeneratorService
+    def sequenceGenerator
 
     void tearDown() {
         super.tearDown()
@@ -219,11 +220,11 @@ class SequenceServiceTests extends GroovyTestCase {
 
         sequenceGeneratorService.shutdown()
 
-        assertFalse sequenceGeneratorService.keepGoing
+        assertFalse sequenceGenerator.keepGoing
 
         assertEquals "01012", new SequenceTestEntity().getNextSequenceNumber()
-        assertTrue sequenceGeneratorService.persisterRunning
-        assertTrue sequenceGeneratorService.keepGoing
+        assertTrue sequenceGenerator.persisterRunning
+        assertTrue sequenceGenerator.keepGoing
     }
 
     def testRefresh() {
@@ -237,7 +238,7 @@ class SequenceServiceTests extends GroovyTestCase {
         def n = SequenceNumber.createCriteria().get {
             definition {
                 eq('name', SequenceTestEntity.class.simpleName)
-                isNull('tenantId')
+                eq('tenantId', 0L)
             }
             isNull('group')
         }

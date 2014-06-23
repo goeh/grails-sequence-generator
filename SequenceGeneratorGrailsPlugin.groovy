@@ -57,6 +57,11 @@ It returns the next number for the sequence defined for the domain class.
     private final String JMX_OBJECT_NAME = ':name=SequenceGeneratorService,type=services'
 
     def doWithSpring = {
+
+        sequenceGenerator(grails.plugins.sequence.DefaultSequenceGenerator) {
+            grailsApplication = application
+        }
+
         //create/find the mbean server
         mbeanServer(MBeanServerFactoryBean) {
             locateExistingServerIfPossible = true
