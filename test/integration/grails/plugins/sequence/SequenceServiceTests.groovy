@@ -28,7 +28,7 @@ class SequenceServiceTests extends GroovyTestCase {
 
     void tearDown() {
         super.tearDown()
-        sequenceGeneratorService.shutdown()
+        sequenceGenerator.shutdown()
     }
 
     def testNoFormat() {
@@ -75,7 +75,7 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals '131002', sequenceGeneratorService.nextNumber(name)
         assertEquals '131003', sequenceGeneratorService.nextNumber(name)
 
-        sequenceGeneratorService.shutdown()
+        sequenceGenerator.shutdown()
 
         assertEquals '131004', sequenceGeneratorService.nextNumber(name)
         assertEquals '131005', sequenceGeneratorService.nextNumber(name)
@@ -105,7 +105,7 @@ class SequenceServiceTests extends GroovyTestCase {
                     }
                     arr[0] = System.currentTimeMillis() - arr[0]
                     if ((Thread.currentThread().id.intValue() % (THREADS / 3).intValue()) == 0) {
-                        sequenceGeneratorService.refresh(sequenceName)
+                        sequenceGenerator.refresh(0L, sequenceName, null)
                         // Be evil and reset all counters from db in the middle of the test.
                     }
                     //println "Thread ${Thread.currentThread().id} finished"
@@ -218,7 +218,7 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals "01010", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01011", new SequenceTestEntity().getNextSequenceNumber()
 
-        sequenceGeneratorService.shutdown()
+        sequenceGenerator.shutdown()
 
         assertFalse sequenceGenerator.keepGoing
 
@@ -233,7 +233,7 @@ class SequenceServiceTests extends GroovyTestCase {
         assertEquals "5002", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "5003", new SequenceTestEntity().getNextSequenceNumber()
 
-        sequenceGeneratorService.sync()
+        sequenceGenerator.sync()
 
         def n = SequenceNumber.createCriteria().get {
             definition {
@@ -247,7 +247,7 @@ class SequenceServiceTests extends GroovyTestCase {
         n.number = 2001
         n.save(flush: true)
 
-        sequenceGeneratorService.refresh(SequenceTestEntity)
+        sequenceGenerator.refresh(0L, SequenceTestEntity.simpleName, null)
 
         assertEquals "2001", new SequenceTestEntity().getNextSequenceNumber()
     }

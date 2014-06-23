@@ -75,19 +75,6 @@ class SequenceGeneratorService {
         return false
     }
 
-    Long refresh(Class clazz, String group = null, Long tenant = null) {
-        refresh(clazz.simpleName, group, tenant)
-    }
-
-    Long refresh(String name, String group = null, Long tenant = null) {
-        sequenceGenerator.refresh(tenant ?: 0L, name, group)
-    }
-
-    @CompileStatic
-    void shutdown() {
-        sequenceGenerator.shutdown()
-    }
-
     Iterable<SequenceStatus> statistics(Long tenant = null) {
         sequenceGenerator.getStatistics(tenant ?: 0L)
     }
@@ -97,8 +84,4 @@ class SequenceGeneratorService {
         statistics().collect { "${it.name}=${it.number}" }.join(', ')
     }
 
-    @ManagedOperation(description = "Save dirty sequences to disc")
-    void sync() {
-        sequenceGenerator.sync()
-    }
 }
