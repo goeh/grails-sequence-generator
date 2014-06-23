@@ -28,10 +28,6 @@ a unique sequence number when the domain instance is saved to database.
 
 ## Configuration
 
-**sequence.flushInterval** (default 60)
-
-Number of seconds to wait before flushing in-memory sequence counters to disk.
-
     sequence.flushInterval = 300
     
 **sequence.(name).format** (default %d)
@@ -46,6 +42,11 @@ The number is formatted with *String#format(String, Object...)*.
 The starting number when a sequence is first initialized. The name is the name of the sequence (simple name of the domain class).
 
     sequence.Customer.start = 1001
+
+**sequence.flushInterval** (default 60)
+
+This configuration parameter is only available when using the *DefaultSequenceGenerator*.
+It specifies the number of seconds to wait before flushing in-memory sequence counters to disk.
 
 ## @SequenceEntity
 
@@ -134,25 +135,13 @@ name          | Name of sequence to set number for
 group         | Optional sub-sequence if multiple sequence counters exists for the same name / domain class
 tenant        | Tenant ID in a multi-tenant environment
 
-**Long refresh(Class clazz, String group = null, Long tenant = null)**
+**Iterable<SequenceStatus> statistics(Long tenant = null)**
 
-Sequences are kept in memory for performance reasons and periodically written to the database.
-Calling refresh() will discard any updates made in memory and re-initialize the sequence from database.
-
-**void shutdown()**
-
-Flush all sequences and terminate the service.
-
-**List<Map> statistics(Long tenant = null)**
+Parameter     | Description
+------------- | ---------------------
+tenant        | Tenant ID in a multi-tenant environment
 
 Return statistics for all sequences defined in the application.
-Statistics are returned as a List of Maps with the following keys:
-
-Key    | Value
------- | -----------------
-name   | Name of the sequence
-format | The sequence number format
-number | Next number that will be returned for this sequence
 
 ## REST Service
 
@@ -180,8 +169,8 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 - Provide a user interface for managing sequence definitions.
   Administrators must be able to change number format and next available number.
 
-- Provide configurable/pluggable sequence generators. The first custom generator I have in mind is an external microservice
-  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation lacks.
+- Implement a second sequence generator that communicates with an external micro service.
+  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.
 
 ## Miscellaneous
 
