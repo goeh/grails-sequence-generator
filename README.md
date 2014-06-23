@@ -85,7 +85,7 @@ For example you could reset the sequence to start with YYYY0001 on the first of 
 
 With *SequenceGeneratorService* you can interact with sequences. The following methods are available:
 
-**def initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null)**
+**Sequence initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null)**
 
 Create a new sequence counter and initialize it with a starting number (default 1).
 
@@ -97,7 +97,7 @@ tenant      | Tenant ID in a multi-tenant environment
 start       | The sequence will start at this number
 format      | The number format returned by *nextNumber()* uses String#format(String, Object...)
 
-**def initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
+**Sequence initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null)**
 
 Same as above but takes a domain class instead of sequence name. Class#getSimpleName() will be used as sequence name.
 
@@ -162,7 +162,7 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 
 ## Known Issues
 
-- The current implementation keep sequences in memory for performance reasons and therefore is cannot be used in clustered environments.
+- The current implementation (*DefaultSequenceGenerator*) keep sequences in memory for performance reasons and therefore is cannot be used in clustered environments.
 
 ## Road Map
 
