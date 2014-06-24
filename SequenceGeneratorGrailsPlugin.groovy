@@ -46,7 +46,7 @@ You can control the starting number, the format and you can have different seque
 The method getNextSequenceNumber() is injected into all domain classes annotated with @SequenceEntity.
 It returns the next number for the sequence defined for the domain class.
 '''
-    def documentation = "https://github.com/goeh/grails-sequence"
+    def documentation = "https://github.com/goeh/grails-sequence-generator"
     def license = "APACHE"
     def organization = [name: "Technipelago AB", url: "http://www.technipelago.se/"]
     def issueManagement = [system: "github", url: "https://github.com/goeh/grails-sequence-generator/issues"]
@@ -58,8 +58,8 @@ It returns the next number for the sequence defined for the domain class.
 
     def doWithSpring = {
 
-        sequenceGenerator(grails.plugins.sequence.DefaultSequenceGenerator) {
-            grailsApplication = application
+        sequenceGenerator(grails.plugins.sequence.DefaultSequenceGenerator) { bean ->
+            bean.autowire = 'byName'
         }
 
         //create/find the mbean server
