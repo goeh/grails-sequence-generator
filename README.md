@@ -170,8 +170,9 @@ You can check sequence statistics from a JMX client using the registered JMX bea
   Administrators must be able to change number format and next available number.
 
 - Implement a second sequence generator that communicates with an external micro service.
-  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.
-  **Work In Progress!** See [sequence-generator-rest](https://github.com/goeh/grails-sequence-generator-rest) for an example of an external sequence generator service.
+  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.  
+-  **Work In Progress!** See [sequence-generator-rest](https://github.com/goeh/grails-sequence-generator-rest) for an example of an external sequence generator service.
+-  **Work In Progress!** See [sequence-generator-redis](https://github.com/goeh/grails-sequence-generator-redis) a sequence generator backed by Redis.
 
 ## Miscellaneous
 
