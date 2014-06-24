@@ -22,34 +22,34 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * In-memory storage for sequence counters.
  */
-class SequenceHandle implements grails.plugins.sequence.Sequence, Serializable {
-    private final AtomicLong number = new AtomicLong(0)
+class SequenceHandle<T extends Number> implements grails.plugins.sequence.Sequence<T>, Serializable {
+    private final AtomicLong number = new AtomicLong(0L)
     String format
     boolean dirty
 
-    SequenceHandle(long n) {
-        this.@number.set(n)
+    SequenceHandle(T n) {
+        this.@number.set(n.longValue())
         dirty = false
     }
 
-    SequenceHandle(long n, String fmt) {
-        this.@number.set(n)
+    SequenceHandle(T n, String fmt) {
+        this.@number.set(n.longValue())
         format = fmt
         dirty = false
     }
 
     @Override
-    public long getNumber() {
+    public T getNumber() {
         this.@number.get()
     }
 
-    public void setNumber(long n) {
+    public void setNumber(T n) {
         dirty = true
-        this.@number.set(n)
+        this.@number.set(n != null ? n.longValue() : 0L)
     }
 
     @Override
-    public long next() {
+    public T next() {
         dirty = true
         return this.@number.getAndIncrement();
     }

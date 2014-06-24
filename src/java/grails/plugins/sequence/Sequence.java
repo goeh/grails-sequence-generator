@@ -20,8 +20,8 @@ package grails.plugins.sequence;
 /**
  * Created by goran on 2014-06-23.
  */
-public interface Sequence {
-    long getNumber();
-    long next();
+public interface Sequence<T extends Number> {
+    T getNumber();
+    T next();
     String nextFormatted();
 }

@@ -20,7 +20,7 @@ package grails.plugins.sequence;
 /**
  * Sequence Generator interface.
  */
-public interface SequenceGenerator {
+public interface SequenceGenerator<T extends Number> {
     /**
      * Create a new sequence.
      *
@@ -29,9 +29,9 @@ public interface SequenceGenerator {
      * @param group  sub-sequence
      * @param format number format
      * @param start  start number
-     * @return sequence
+     * @return current sequence status
      */
-    grails.plugins.sequence.Sequence createSequence(long tenant, String name, String group, String format, long start);
+    SequenceStatus createSequence(long tenant, String name, String group, String format, T start);
 
     /**
      * Get next unique number formatted.
@@ -51,7 +51,7 @@ public interface SequenceGenerator {
      * @param group  sub-sequence
      * @return number as a long
      */
-    Long nextNumberLong(long tenant, String name, String group);
+    T nextNumberLong(long tenant, String name, String group);
 
     /**
      * Update sequence.
@@ -64,7 +64,17 @@ public interface SequenceGenerator {
      * @param start   new number
      * @return sequence status if sequence was updated, null otherwise
      */
-    SequenceStatus update(long tenant, String name, String group, String format, Long current, Long start);
+    SequenceStatus update(long tenant, String name, String group, String format, T current, T start);
+
+    /**
+     * Current status of a sequence.
+     *
+     * @param tenant tenant ID
+     * @param name   sequence name
+     * @param group  sub-sequence
+     * @return current status
+     */
+    SequenceStatus status(long tenant, String name, String group);
 
     /**
      * Get sequence statistics.

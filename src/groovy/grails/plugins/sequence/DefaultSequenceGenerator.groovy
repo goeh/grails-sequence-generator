@@ -28,15 +28,15 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Created by goran on 2014-06-23.
  */
-class DefaultSequenceGenerator implements SequenceGenerator {
+class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T> {
 
-    private static final Map<String, SequenceHandle> activeSequences = new ConcurrentHashMap<String, SequenceHandle>()
+    private static final Map<String, SequenceHandle<T>> activeSequences = new ConcurrentHashMap<String, SequenceHandle<T>>()
     private static final Logger log = LoggerFactory.getLogger(DefaultSequenceGenerator.class)
 
     GrailsApplication grailsApplication
 
-    boolean keepGoing
-    boolean persisterRunning
+    private boolean keepGoing
+    private boolean persisterRunning
     private Thread persisterThread
 
     private void initPersister() {
@@ -98,7 +98,7 @@ class DefaultSequenceGenerator implements SequenceGenerator {
         return s.toString()
     }
 
-    private SequenceHandle getHandle(String name, String group = null, Long tenant = null) {
+    private SequenceHandle<T> getHandle(String name, String group = null, Long tenant = null) {
         def key = generateKey(name, group, tenant)
         def h = activeSequences.get(key)
         if (h == null) {
@@ -114,7 +114,7 @@ class DefaultSequenceGenerator implements SequenceGenerator {
                 log.debug "Created new sequence [$key] starting at [${h.number}] with format [${h.format}]"
             }
             synchronized (activeSequences) {
-                SequenceHandle tmp = activeSequences.get(key)
+                SequenceHandle<T> tmp = activeSequences.get(key)
                 if (tmp != null) {
                     h = tmp
                 } else {
@@ -128,8 +128,8 @@ class DefaultSequenceGenerator implements SequenceGenerator {
     }
 
     @CompileStatic
-    private SequenceHandle createHandle(final Long start, final String format) {
-        new SequenceHandle(start, format)
+    private SequenceHandle<T> createHandle(final T start, final String format) {
+        new SequenceHandle<T>(start, format)
     }
 
     @CompileStatic
@@ -178,9 +178,9 @@ class DefaultSequenceGenerator implements SequenceGenerator {
             String name = parts[0]
             String group = parts[1] ?: null
             Long tenant = parts[2] ? Long.valueOf(parts[2]) : null
-            SequenceHandle handle = activeSequences.get(key)
+            SequenceHandle<T> handle = activeSequences.get(key)
             synchronized (handle) {
-                Long n = handle.number
+                T n = handle.number
                 SequenceDefinition.withTransaction { tx ->
                     SequenceNumber seq = findNumber(name, group, tenant)
                     if (seq) {
@@ -246,7 +246,7 @@ class DefaultSequenceGenerator implements SequenceGenerator {
     }
 
     @Override
-    grails.plugins.sequence.Sequence createSequence(long tenant, String name, String group, String format, long start) {
+    SequenceStatus createSequence(long tenant, String name, String group, String format, T start) {
         def key = generateKey(name, group, tenant)
         def h = activeSequences.get(key)
         if (h == null) {
@@ -273,20 +273,20 @@ class DefaultSequenceGenerator implements SequenceGenerator {
             }
             initPersister()
         }
-        return h
+        new SequenceStatus(name, h.getFormat(), h.getNumber())
     }
 
-    @Override
+    @CompileStatic
     void refresh(long tenant, String name, String group) {
         SequenceNumber n = findNumber(name, group, tenant)
         if (n) {
-            SequenceHandle h = getHandle(name, group, tenant)
+            SequenceHandle<T> h = getHandle(name, group, tenant)
             if (h) {
                 synchronized (h) {
                     if (!h.dirty) {
                         SequenceNumber.withTransaction {
-                            n = SequenceNumber.lock(n.id)
-                            h.setNumber(n.number)
+                            n = (SequenceNumber)SequenceNumber.lock(n.id)
+                            h.setNumber((T)n.number)
                         }
                     }
                 }
@@ -295,17 +295,20 @@ class DefaultSequenceGenerator implements SequenceGenerator {
     }
 
     @Override
+    @CompileStatic
     String nextNumber(long tenant, String name, String group) {
         getHandle(name, group, tenant).nextFormatted()
     }
 
     @Override
-    Long nextNumberLong(long tenant, String name, String group) {
+    @CompileStatic
+    T nextNumberLong(long tenant, String name, String group) {
         getHandle(name, group, tenant).next()
     }
 
     @Override
-    SequenceStatus update(long tenant, String name, String group, String format, Long current, Long start) {
+    @CompileStatic
+    SequenceStatus update(long tenant, String name, String group, String format, T current, T start) {
         boolean rval = false
         if(format != null) {
             def definition = findDefinition(name, tenant)
@@ -316,11 +319,11 @@ class DefaultSequenceGenerator implements SequenceGenerator {
             }
         }
         if(current != null && start != null) {
-            SequenceHandle h = getHandle(name, group, tenant)
+            SequenceHandle<T> h = getHandle(name, group, tenant)
             if (h.number == current) {
                 synchronized (h) {
-                    if (h.number == current) {
-                        h.number = start
+                    if (h.getNumber() == current) {
+                        h.setNumber(start)
                         rval = true
                     }
                 }
@@ -328,9 +331,16 @@ class DefaultSequenceGenerator implements SequenceGenerator {
         }
         if(rval) {
             def handle = getHandle(name, group, tenant)
-            return new SequenceStatus(name, handle.getFormat(), handle.getNumber())
+            return new SequenceStatus<T>(name, handle.getFormat(), handle.getNumber())
         }
         null
+    }
+
+    @Override
+    @CompileStatic
+    SequenceStatus status(long tenant, String name, String group) {
+        SequenceHandle<T> h = getHandle(name, group, tenant)
+        new SequenceStatus<T>(name, h.getFormat(), h.getNumber())
     }
 
     @Override
@@ -349,7 +359,7 @@ class DefaultSequenceGenerator implements SequenceGenerator {
             final List<Map> result = []
             for (SequenceNumber n in numbers) {
                 SequenceDefinition d = n.definition
-                SequenceHandle handle = getHandle(d.name, n.group, d.tenantId)
+                SequenceHandle<T> handle = getHandle(d.name, n.group, d.tenantId)
                 result << new SequenceStatus(d.name, d.format, handle.getNumber())
             }
             result

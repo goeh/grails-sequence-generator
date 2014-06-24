@@ -20,16 +20,16 @@ package grails.plugins.sequence;
 /**
  * A sequence generator snapshot.
  */
-public class SequenceStatus {
+public class SequenceStatus<T extends Number> {
     private final long timestamp;
     private final String name;
     private final String format;
     private final long number;
 
-    public SequenceStatus(String name, String format, long number) {
+    public SequenceStatus(String name, String format, T number) {
         this.name = name;
         this.format = format;
-        this.number = number;
+        this.number = number != null ? number.longValue() : 0L;
         this.timestamp = System.currentTimeMillis();
     }
 

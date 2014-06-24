@@ -19,7 +19,6 @@ package grails.plugins.sequence
 
 import groovy.transform.CompileStatic
 import org.springframework.jmx.export.annotation.ManagedAttribute
-import org.springframework.jmx.export.annotation.ManagedOperation
 import org.springframework.jmx.export.annotation.ManagedResource
 
 /**
@@ -34,12 +33,12 @@ class SequenceGeneratorService {
     SequenceGenerator sequenceGenerator
 
     @CompileStatic
-    grails.plugins.sequence.Sequence initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null) {
+    SequenceStatus initSequence(Class clazz, String group = null, Long tenant = null, Long start = null, String format = null) {
         initSequence(clazz.simpleName, group, tenant, start, format)
     }
 
     @CompileStatic
-    grails.plugins.sequence.Sequence initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null) {
+    SequenceStatus initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null) {
         sequenceGenerator.createSequence(tenant ?: 0L, name, group, format, start != null ? start : 1L)
     }
 
@@ -50,18 +49,14 @@ class SequenceGeneratorService {
 
     @CompileStatic
     String nextNumber(String name, String group = null, Long tenant = null) {
-        grails.plugins.sequence.Sequence h = initSequence(name, group, tenant)
-        synchronized (h) {
-            return h.nextFormatted()
-        }
+        initSequence(name, group, tenant)
+        sequenceGenerator.nextNumber(tenant ?: 0L, name, group)
     }
 
     @CompileStatic
     Long nextNumberLong(String name, String group = null, Long tenant = null) {
-        grails.plugins.sequence.Sequence h = initSequence(name, group, tenant)
-        synchronized (h) {
-            return h.next()
-        }
+        initSequence(name, group, tenant)
+        sequenceGenerator.nextNumberLong(tenant ?: 0L, name, group).longValue()
     }
 
     @CompileStatic
@@ -73,6 +68,10 @@ class SequenceGeneratorService {
             }
         }
         return false
+    }
+
+    SequenceStatus status(String name, String group = null, Long tenant = null) {
+        sequenceGenerator.status(tenant ?: 0L, name, group)
     }
 
     Iterable<SequenceStatus> statistics(Long tenant = null) {
