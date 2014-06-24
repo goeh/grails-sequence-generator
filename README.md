@@ -6,7 +6,7 @@ you can have different sequence counters based on application logic.
 
 **Example**
 
-    sequenceService.initSequence('WebOrder', null, null, 100, 'WEB-%04d')
+    sequenceGeneratorService.initSequence('WebOrder', null, null, 100, 'WEB-%04d')
 
     assert sequenceGeneratorService.nextNumber('WebOrder') == 'WEB-0100'
     assert sequenceGeneratorService.nextNumber('WebOrder') == 'WEB-0101'
@@ -171,6 +171,7 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 
 - Implement a second sequence generator that communicates with an external micro service.
   (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.
+  **Work In Progress!** See [sequence-generator-rest](https://github.com/goeh/grails-sequence-generator-rest) for an example of an external sequence generator service.
 
 ## Miscellaneous
 
