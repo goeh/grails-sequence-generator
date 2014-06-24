@@ -37,6 +37,18 @@ public class SequenceStatus<T extends Number> {
         return timestamp;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public String getFormat() {
+        return format;
+    }
+
+    public long getNumber() {
+        return number;
+    }
+
     String getNumberFormatted() {
         return String.format(format != null ? format : "%s", number);
     }

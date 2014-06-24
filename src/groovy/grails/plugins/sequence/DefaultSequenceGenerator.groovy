@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T> {
 
-    private static final Map<String, SequenceHandle<T>> activeSequences = new ConcurrentHashMap<String, SequenceHandle<T>>()
+    private static
+    final Map<String, SequenceHandle<T>> activeSequences = new ConcurrentHashMap<String, SequenceHandle<T>>()
     private static final Logger log = LoggerFactory.getLogger(DefaultSequenceGenerator.class)
 
     GrailsApplication grailsApplication
@@ -276,6 +277,30 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
         new SequenceStatus(name, h.getFormat(), h.getNumber())
     }
 
+    /**
+     * Delete a sequence.
+     *
+     * @param tenant tenant ID
+     * @param name sequence name
+     * @param group sub-sequence
+     * @return true if sequence was removed
+     */
+    @Override
+    boolean deleteSequence(long tenant, String name, String group) {
+        def n = findNumber(name, group, tenant)
+        if (!n) {
+            return false
+        }
+        def d = n.definition
+        if(d.numbers.size() == 1) {
+            d.delete() // There was only one sequence with this name, delete definition (cascades to numbers)
+        } else {
+            d.removeFromNumbers(n)
+            n.delete() // Delete only this sequence/group
+        }
+        return true
+    }
+
     @CompileStatic
     void refresh(long tenant, String name, String group) {
         SequenceNumber n = findNumber(name, group, tenant)
@@ -285,8 +310,8 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
                 synchronized (h) {
                     if (!h.dirty) {
                         SequenceNumber.withTransaction {
-                            n = (SequenceNumber)SequenceNumber.lock(n.id)
-                            h.setNumber((T)n.number)
+                            n = (SequenceNumber) SequenceNumber.lock(n.id)
+                            h.setNumber((T) n.number)
                         }
                     }
                 }
@@ -310,15 +335,15 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
     @CompileStatic
     SequenceStatus update(long tenant, String name, String group, String format, T current, T start) {
         boolean rval = false
-        if(format != null) {
+        if (format != null) {
             def definition = findDefinition(name, tenant)
-            if(definition != null && definition.format != format) {
+            if (definition != null && definition.format != format) {
                 definition.format = format
-                definition.save(flush:true)
+                definition.save(flush: true)
                 rval = true
             }
         }
-        if(current != null && start != null) {
+        if (current != null && start != null) {
             SequenceHandle<T> h = getHandle(name, group, tenant)
             if (h.number == current) {
                 synchronized (h) {
@@ -329,7 +354,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
                 }
             }
         }
-        if(rval) {
+        if (rval) {
             def handle = getHandle(name, group, tenant)
             return new SequenceStatus<T>(name, handle.getFormat(), handle.getNumber())
         }
@@ -375,6 +400,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
     }
 
     @CompileStatic
+    @Override
     synchronized void shutdown() {
         keepGoing = false
         try {

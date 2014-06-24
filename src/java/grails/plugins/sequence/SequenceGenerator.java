@@ -34,6 +34,16 @@ public interface SequenceGenerator<T extends Number> {
     SequenceStatus createSequence(long tenant, String name, String group, String format, T start);
 
     /**
+     * Delete a sequence.
+     *
+     * @param tenant tenant ID
+     * @param name   sequence name
+     * @param group  sub-sequence
+     * @return true if sequence was removed
+     */
+    boolean deleteSequence(long tenant, String name, String group);
+
+    /**
      * Get next unique number formatted.
      *
      * @param tenant tenant ID
@@ -83,4 +93,10 @@ public interface SequenceGenerator<T extends Number> {
      * @return statistics for all sequences in the tenant
      */
     Iterable<SequenceStatus> getStatistics(long tenant);
+
+    /**
+     * Shutdown the sequence generator.
+     * Implementations can close connections, do cleanup, etc.
+     */
+    void shutdown();
 }
