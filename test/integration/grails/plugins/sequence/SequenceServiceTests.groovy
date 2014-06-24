@@ -57,7 +57,7 @@ class SequenceServiceTests extends GroovyTestCase {
 
         //sequenceGeneratorService.save()
 
-        assertEquals 104, seq.number
+        assertEquals 104, sequenceGeneratorService.status(name, null, null).number
     }
 
     def testSetNumber() {
