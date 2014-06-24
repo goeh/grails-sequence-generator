@@ -247,7 +247,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
     }
 
     @Override
-    SequenceStatus createSequence(long tenant, String name, String group, String format, T start) {
+    SequenceStatus create(long tenant, String name, String group, String format, T start) {
         def key = generateKey(name, group, tenant)
         def h = activeSequences.get(key)
         if (h == null) {
@@ -286,7 +286,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
      * @return true if sequence was removed
      */
     @Override
-    boolean deleteSequence(long tenant, String name, String group) {
+    boolean delete(long tenant, String name, String group) {
         def n = findNumber(name, group, tenant)
         if (!n) {
             return false

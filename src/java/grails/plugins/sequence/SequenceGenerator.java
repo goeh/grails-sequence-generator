@@ -31,7 +31,7 @@ public interface SequenceGenerator<T extends Number> {
      * @param start  start number
      * @return current sequence status
      */
-    SequenceStatus createSequence(long tenant, String name, String group, String format, T start);
+    SequenceStatus create(long tenant, String name, String group, String format, T start);
 
     /**
      * Delete a sequence.
@@ -41,7 +41,7 @@ public interface SequenceGenerator<T extends Number> {
      * @param group  sub-sequence
      * @return true if sequence was removed
      */
-    boolean deleteSequence(long tenant, String name, String group);
+    boolean delete(long tenant, String name, String group);
 
     /**
      * Get next unique number formatted.

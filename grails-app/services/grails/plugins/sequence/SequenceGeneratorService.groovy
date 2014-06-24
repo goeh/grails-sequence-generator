@@ -39,7 +39,7 @@ class SequenceGeneratorService {
 
     @CompileStatic
     SequenceStatus initSequence(String name, String group = null, Long tenant = null, Long start = null, String format = null) {
-        sequenceGenerator.createSequence(tenant ?: 0L, name, group, format, start != null ? start : 1L)
+        sequenceGenerator.create(tenant ?: 0L, name, group, format, start != null ? start : 1L)
     }
 
     @CompileStatic
