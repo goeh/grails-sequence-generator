@@ -292,7 +292,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
             return false
         }
         def d = n.definition
-        if(d.numbers.size() == 1) {
+        if (d.numbers.size() == 1) {
             d.delete() // There was only one sequence with this name, delete definition (cascades to numbers)
         } else {
             d.removeFromNumbers(n)
@@ -329,6 +329,22 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
     @CompileStatic
     T nextNumberLong(long tenant, String name, String group) {
         getHandle(name, group, tenant).next()
+    }
+
+    /**
+     * This method exists only to make it possible to have the url-shortener plugin co-exist
+     * with the sequence-generator plugin. Both plugins relies on a bean called sequenceGenerator.
+     * The SequenceGenerator interface in url-shortener only have one method Long getNextNumber() so
+     * we imitate that method here and url-shortener can get its sequences from this generator.
+     *
+     * @return next sequence number for the url-shortener plugin.
+     */
+    T getNextNumber() {
+        final ConfigObject config = grailsApplication.config.shortener.sequence
+        final Long tenant = config.tenant ?: 0L;
+        final String name = config.name ?: 'UrlShortener'
+        final String group = config.group ?: null
+        nextNumberLong(tenant, name, group)
     }
 
     @Override
