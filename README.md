@@ -162,8 +162,8 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 
 ## Changes
 
-- *1.1* Renamed SequenceNumber.number column to `sequence_number` because `number` is a reserved word in Oracle DB. *DATABASE MIGRATION NEEDED*
-- *1.0* First public release
+- **1.1** Renamed SequenceNumber.number column to `sequence_number` because `number` is a reserved word in Oracle DB. *DATABASE MIGRATION NEEDED*
+- **1.0** First public release
 
 ## Known Issues
 
