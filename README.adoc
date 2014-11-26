@@ -1,0 +1,246 @@
+= Grails Sequence Generator Plugin
+Goran Ehrsson <goran@technipelago.se>
+Version 1.1
+:description: Official documentation for the Grails Sequence Generator Plugin
+:keywords: groovy, grails, database, sequences
+:icons: font
+:imagesdir: ./images
+:source-highlighter: prettify
+
+The sequence generator plugin provides a simple way to add sequence counters
+to Grails applications. You can control the starting number, the format and
+you can have different sequence counters based on application logic.
+
+== Examples
+
+[source,groovy]
+----
+    sequenceGeneratorService.initSequence('WebOrder', null, null, 100, 'WEB-%04d')
+
+    assert sequenceGeneratorService.nextNumber('WebOrder') == 'WEB-0100'
+    assert sequenceGeneratorService.nextNumber('WebOrder') == 'WEB-0101'
+    assert sequenceGeneratorService.nextNumber('WebOrder') == 'WEB-0102'
+
+    assert sequenceGeneratorService.nextNumberLong('WebOrder') == 103
+    assert sequenceGeneratorService.nextNumberLong('WebOrder') == 104
+----
+
+The SequenceGeneratorService implementation is very efficient and can provide
+sequential numbers to concurrent threads without problems.
+
+The default implementation persist sequences to the database to survive server restarts.
+
+Because it's common to have sequence properties on domain classes (customer number, order number, etc)
+there is an annotation that does all the plumbing for you.
+Domain classes annotated with `grails.plugins.sequence.SequenceEntity`
+will get a `number` property added at compile that will be initialized with
+a unique sequence number when the domain instance is saved to database.
+
+== Configuration
+
+The sequence generator works without any configuration.
+Sensible defaults are used if no configuration is found.
+You can customise the sequences with the following parameters in Config.groovy:
+
+=== Number format
+
+`sequence.(name).format` (default %d)
+
+Format to use for sequence numbers. The name is the name of the sequence (simple name of the domain class).
+The number is formatted with `String#format(String, Object...)`.
+
+    sequence.Customer.format = "%05d"
+
+=== Starting number
+
+`sequence.(name).start` (default 1)
+
+The starting number when a sequence is first initialized. The name is the name of the sequence (simple name of the domain class).
+
+    sequence.Customer.start = 1001
+
+=== Flush interval
+
+`sequence.flushInterval` (default 60)
+
+This configuration parameter is only available when using the `DefaultSequenceGenerator`.
+It specifies the number of seconds to wait before flushing in-memory sequence counters to the database.
+
+    sequence.flushInterval = 30
+
+== Annotation @SequenceEntity
+
+If you have a sequence property on a domain class, for example a customer number property, you could add code
+in beforeValidate() or beforeInsert() that assigns a sequence number with `sequenceGeneratorService.nextNumber(this.class)`.
+But the `grails.plugins.sequence.SequenceEntity` annotation makes this much easier. It does all the plumbing for you.
+
+[source,groovy]
+.Customer.groovy
+----
+@SequenceEntity
+class Customer {
+    ...
+}
+----
+
+An AST Transformation adds a `String` property called *number* to the domain class at compile time.
+The property will by default have `maxSize:10`, `unique:true`, and `blank:false` constraints.
+But you can override this in the annotation.
+
+[source,groovy]
+.CustomerOrder.groovy
+----
+@SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = "true") <1>
+class CustomerOrder {
+    ...
+}
+----
+<1> Note that the `unique` attribute is a `String`, not a `boolean`.
+
+The AST Transformation will also add code in `beforeValidate()` that sets the `number` property if it is not already set.
+
+So the only thing you really have to do is to annotate your domain class with `@SequenceEntity` and the number
+property will be set to a new unique number before the domain instance is saved to the database.
+
+[NOTE]
+====
+Maybe you ask: "Why not use database sequences?"
+
+Well, a database sequence use numbers only and is very efficient but not so flexible.
+This plugin is more flexible and lets you use String properties and prefix/suffix the number with characters.
+You can use sub-sequences to generate different numbers depending on application logic.
+Maybe domain instances of one category should use another sequence that the default.
+This plugin also let you change the sequence number programatically.
+For example you could reset the sequence to start with YYYY0001 on the first of January every year.
+====
+
+== SequenceGeneratorService
+
+With `SequenceGeneratorService` you can interact with sequences. The following methods are available:
+
+`Sequence initSequence(String name, String group, Long tenant, Long start, String format)`
+
+Create a new sequence counter and initialize it with a starting number (default 1).
+
+[options="header",cols="1,4"]
+|===
+| Parameter         | Description
+| name              | Name of sequence
+| group (optional)  | If you need multiple sequences for the same domain class based on some application logic you can use groups to create sub-sequences
+| tenant (optional) | Tenant ID in a multi-tenant environment
+| start (optional)  | The sequence will start at this number
+| format (optional) | The number format returned by `nextNumber()` uses `String#format(String, Object...)`
+|===
+
+`Sequence initSequence(Class clazz, String group, Long tenant, Long start, String format)`
+
+Same as above but takes a domain class instead of sequence name. `Class#getSimpleName()` will be used as sequence name.
+
+`String nextNumber(String name, String group, Long tenant)`
+
+Returns the next number in the specified sequence. The number is formatted with the sequence's defined format.
+
+[options="header",cols="1,4"]
+|===
+| Parameter         | Description
+| name              | Name of sequence
+| group (optional)  | Optional sub-sequence if multiple sequence counters exists for the same name / domain class
+| tenant (optional) | Tenant ID in a multi-tenant environment
+|===
+
+`String nextNumber(Class clazz, String group, Long tenant)`
+
+Same as above but takes a domain class instead of sequence name. Class#getSimpleName() will be used as sequence name.
+
+`Long nextNumberLong(String name, String group, Long tenant)`
+
+If you don't need formatted numbers and just want a number sequence you can use `nextNumberLong()`.
+It works the same way as `nextNumber()` but returns a `Long` instead of a formatted `String`.
+
+`boolean setNextNumber(Long currentNumber, Long newNumber, String name, String group, Long tenant)`
+
+Sets the next number for a sequence counter.
+To avoid concurrency issues you must specify both the current number and the number you want to change to.
+If current number is not equal to the specified current number the new number will not be set.
+True is returned if the sequence number was updated.
+
+[options="header",cols="1,4"]
+|===
+| Parameter         | Description
+| currentNumber     | The caller's view of what the current number is
+| newNumber         | The number to set. The next call to `nextNumber()` will get this number
+| name              | Name of sequence to set number for
+| group (optional)  | Optional sub-sequence if multiple sequence counters exists for the same name / domain class
+| tenant (optional) | Tenant ID in a multi-tenant environment
+|===
+
+`Iterable<SequenceStatus> statistics(Long tenant)`
+
+[options="header",cols="1,4"]
+|===
+| Parameter         | Description
+| tenant (optional) | Tenant ID in a multi-tenant environment
+|===
+
+Return statistics for all sequences defined in the application.
+
+== REST Controller
+
+`SequenceGeneratorController` provides two methods that accepts JSON requests to interact with sequences.
+
+WARNING: Make sure you protect this controller with appropriate access control!
+
+`list(String name, String group)`
+
+Returns a list of sequences in JSON format. See `SequenceGeneratorService#getStatistics()`
+
+`update(String name, String group, Long current, Long next)`
+
+Accepts POST requests that updates the next number for a sequence. See `SequenceGeneratorService#setNextNumber()`
+
+== JMX
+
+You can check sequence statistics from a JMX client using the registered JMX bean `:name=SequenceGeneratorService,type=services`.
+
+== Changes
+
+1.1:: Renamed SequenceNumber.number column to `sequence_number` because `number` is a reserved word in Oracle DB.
+
+[TIP]
+====
+When upgrading from 1.0 to 1.1 the *number* property was renamed to *sequence_number*.
+The database migration plugin does not handle column renaming so well.
+It generates dropColumn and addColumn statements, resulting in data-loss.
+The following script is a modified version for MySQL:
+
+[source,groovy]
+----
+changeSet(author: "nobody", id: "1417018030553-1") {
+    renameColumn(tableName: 'sequence_number', oldColumnName: 'number', newColumnName: 'sequence_number', columnDataType: 'bigint')
+}
+----
+====
+
+1.0:: First public release
+
+== Known Issues
+
+* The current implementation (DefaultSequenceGenerator) keep sequences in memory for performance reasons and therefore it cannot be used in clustered environments.
+The (experimental) *sequence-generator-rest* and *sequence-generator-redis* are designed to work in clustered environments, see link below.
+
+== Road Map
+
+* Provide a user interface for managing sequence definitions.
+  Administrators must be able to change number format and next available number.
+* Implement a second sequence generator that communicates with an external micro service.
+  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation `DefaultSequenceGenerator` lacks.
+**  *Work In Progress:* See https://github.com/goeh/grails-sequence-generator-rest[sequence-generator-rest] for an example of an external sequence generator service.
+**  *Work In Progress:* See https://github.com/goeh/grails-sequence-generator-redis[sequence-generator-redis] a sequence generator backed by Redis.
+
+== License
+
+This plugin is licensed with http://www.apache.org/licenses/LICENSE-2.0.html[Apache License version 2.0]
+
+== Miscellaneous
+
+The http://gr8crm.github.io[GR8 CRM ecosystem] uses the sequence-generator plugin to generate customer, order and invoice numbers.
