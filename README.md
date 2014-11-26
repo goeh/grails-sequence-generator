@@ -29,7 +29,7 @@ a unique sequence number when the domain instance is saved to database.
 ## Configuration
 
     sequence.flushInterval = 300
-    
+
 **sequence.(name).format** (default %d)
 
 Format to use for sequence numbers. The name is the name of the sequence (simple name of the domain class).
@@ -58,11 +58,11 @@ But the *grails.plugins.sequence.SequenceEntity* annotation makes this much easi
     class Customer {
         ...
     }
-    
+
 An AST Transformation adds a *String* property called **number** to the domain class at compile time.
 The property will have *maxSize:10*, *unique:true*, and *blank:false* constraints. But you can override this in the annotation.
- 
-    @SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = true) 
+
+    @SequenceEntity(property = "orderNumber", maxSize = 20, blank = false, unique = "true")
     class CustomerOrder {
         ...
     }
@@ -71,7 +71,7 @@ The AST Transformation will also add code in *beforeValidate()* that sets the *n
 
 So the only thing you really have to do is to annotate your domain class with *@SequenceEntity* and the number
 property will be set to a new unique number before the domain instance is saved to the database.
- 
+
 **Maybe you ask: "Why not use database sequences?"**
 
 Well, a database sequence use numbers only and is very efficient but not so flexible.
@@ -80,7 +80,7 @@ You can use sub-sequences to generate different numbers depending on application
 Maybe domain instances of one category should use another sequence that the default.
 This plugin also let you change the sequence number programatically.
 For example you could reset the sequence to start with YYYY0001 on the first of January every year.
- 
+
 ## SequenceGeneratorService
 
 With *SequenceGeneratorService* you can interact with sequences. The following methods are available:
@@ -158,7 +158,12 @@ Update the next number for a sequence. See *SequenceGeneratorService#setNextNumb
 
 ## JMX
 
-You can check sequence statistics from a JMX client using the registered JMX bean *:name=SequenceGeneratorService,type=services*. 
+You can check sequence statistics from a JMX client using the registered JMX bean *:name=SequenceGeneratorService,type=services*.
+
+## Changes
+
+1.1:: Renamed SequenceNumber.number column to `sequence_number` because `number` is a reserved word in Oracle DB. *DATABASE MIGRATION NEEDED*
+1.0:: First public release
 
 ## Known Issues
 
@@ -170,7 +175,7 @@ You can check sequence statistics from a JMX client using the registered JMX bea
   Administrators must be able to change number format and next available number.
 
 - Implement a second sequence generator that communicates with an external micro service.
-  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.  
+  (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation *DefaultSequenceGenerator* lacks.
 -  **Work In Progress!** See [sequence-generator-rest](https://github.com/goeh/grails-sequence-generator-rest) for an example of an external sequence generator service.
 -  **Work In Progress!** See [sequence-generator-redis](https://github.com/goeh/grails-sequence-generator-redis) a sequence generator backed by Redis.
 

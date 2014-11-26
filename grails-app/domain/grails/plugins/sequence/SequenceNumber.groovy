@@ -30,6 +30,7 @@ class SequenceNumber {
     }
     static mapping = {
         group column:'sequence_group'
+        number column:'sequence_number'
     }
 
     SequenceHandle toHandle() {
