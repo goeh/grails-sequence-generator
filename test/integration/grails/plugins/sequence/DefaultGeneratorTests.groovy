@@ -30,7 +30,7 @@ class DefaultGeneratorTests extends GroovyTestCase {
         sequenceGenerator.shutdown()
     }
 
-    def testSetNumber() {
+    void testSetNumber() {
         def name = "Ticket"
         def seq = sequenceGeneratorService.initSequence(name, null, null, 121001)
 
@@ -52,7 +52,7 @@ class DefaultGeneratorTests extends GroovyTestCase {
         assertEquals '131006', sequenceGeneratorService.nextNumber(name)
     }
 
-    def testThreads() {
+    void testThreads() {
         def sequenceName = 'ThreadTestDefault'
 
         final int THREADS = 100
@@ -113,7 +113,7 @@ class DefaultGeneratorTests extends GroovyTestCase {
         assertEquals 1001 + THREADS * NUMBERS, sequenceGeneratorService.nextNumberLong(sequenceName)
     }
 
-    def testShutdown() {
+    void testShutdown() {
         sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 1008, '%05d')
         assertEquals "01008", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "01009", new SequenceTestEntity().getNextSequenceNumber()
@@ -129,7 +129,7 @@ class DefaultGeneratorTests extends GroovyTestCase {
         assertTrue sequenceGenerator.keepGoing
     }
 
-    def testRefresh() {
+    void testRefresh() {
         sequenceGeneratorService.initSequence(SequenceTestEntity, null, null, 5001, '%04d')
         assertEquals "5001", new SequenceTestEntity().getNextSequenceNumber()
         assertEquals "5002", new SequenceTestEntity().getNextSequenceNumber()
