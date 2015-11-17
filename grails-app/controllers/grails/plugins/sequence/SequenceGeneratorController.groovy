@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Goran Ehrsson.
+ * Copyright (c) 2015 Goran Ehrsson.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package grails.plugins.sequence
 
 import grails.converters.JSON
 
-import javax.servlet.http.HttpServletResponse
-
 /**
  * Admin actions for the sequence generator.
  */
@@ -30,6 +28,18 @@ class SequenceGeneratorController {
     def currentTenant
 
     static allowedMethods = [update: 'POST']
+
+    def index(String name, String group, Long current, Long next) {
+        def tenant = currentTenant?.get()?.longValue()
+        if (request.post) {
+            if (sequenceGeneratorService.setNextNumber(current, next, name, group, tenant)) {
+                flash.message = message(code: 'sequenceGenerator.update.message', default: "Sequence updated", args: [name, group, current, next])
+            } else {
+                flash.message = message(code: 'sequenceGenerator.update.error', default: "Sequence could not be updated", args: [name, group, current, next])
+            }
+        }
+        [result: sequenceGeneratorService.statistics(tenant)]
+    }
 
     def list(String name, String group) {
         def tenant = currentTenant?.get()?.longValue()
@@ -52,7 +62,6 @@ class SequenceGeneratorController {
         } else {
             rval.success = false
             rval.message = 'Current number was not current, please try again.'
-            //response.sendError(HttpServletResponse.SC_BAD_REQUEST)
         }
         render rval as JSON
     }
