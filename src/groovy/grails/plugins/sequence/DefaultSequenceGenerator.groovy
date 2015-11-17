@@ -274,7 +274,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
             }
             initPersister()
         }
-        new SequenceStatus(name, h.getFormat(), h.getNumber())
+        new SequenceStatus(name, group, h.getFormat(), h.getNumber())
     }
 
     /**
@@ -372,7 +372,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
         }
         if (rval) {
             def handle = getHandle(name, group, tenant)
-            return new SequenceStatus<T>(name, handle.getFormat(), handle.getNumber())
+            return new SequenceStatus<T>(name, group, handle.getFormat(), handle.getNumber())
         }
         null
     }
@@ -381,7 +381,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
     @CompileStatic
     SequenceStatus status(long tenant, String name, String group) {
         SequenceHandle<T> h = getHandle(name, group, tenant)
-        new SequenceStatus<T>(name, h.getFormat(), h.getNumber())
+        new SequenceStatus<T>(name, group, h.getFormat(), h.getNumber())
     }
 
     @Override
@@ -401,7 +401,7 @@ class DefaultSequenceGenerator<T extends Number> implements SequenceGenerator<T>
             for (SequenceNumber n in numbers) {
                 SequenceDefinition d = n.definition
                 SequenceHandle<T> handle = getHandle(d.name, n.group, d.tenantId)
-                result << new SequenceStatus(d.name, d.format, handle.getNumber())
+                result << new SequenceStatus(d.name, n.group, d.format, handle.getNumber())
             }
             result
         }

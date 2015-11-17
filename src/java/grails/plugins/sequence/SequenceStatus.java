@@ -23,11 +23,13 @@ package grails.plugins.sequence;
 public class SequenceStatus<T extends Number> {
     private final long timestamp;
     private final String name;
+    private String group;
     private final String format;
     private final long number;
 
-    public SequenceStatus(String name, String format, T number) {
+    public SequenceStatus(String name, String group, String format, T number) {
         this.name = name;
+        this.group = group;
         this.format = format;
         this.number = number != null ? number.longValue() : 0L;
         this.timestamp = System.currentTimeMillis();
@@ -39,6 +41,10 @@ public class SequenceStatus<T extends Number> {
 
     public String getName() {
         return name;
+    }
+
+    public String getGroup() {
+        return group;
     }
 
     public String getFormat() {
