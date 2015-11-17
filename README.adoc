@@ -182,7 +182,7 @@ True is returned if the sequence number was updated.
 | tenant (optional) | Tenant ID in a multi-tenant environment
 |===
 
-Return statistics for all sequences defined in the application.
+Return statistics for all sequences defined in the application for a given tenant.
 
 == REST Controller
 
@@ -204,6 +204,8 @@ You can check sequence statistics from a JMX client using the registered JMX bea
 
 == Changes
 
+1.2:: Added 'group' property to the SequenceStatus class. This makes it possible to retrieve group name when parsing statistics.
+      Also added an admin UI for setting next available sequence number (controller: 'sequenceGenerator', action: 'index')
 1.1:: Renamed SequenceNumber.number column to `sequence_number` because `number` is a reserved word in Oracle DB.
 
 [TIP]
@@ -230,8 +232,6 @@ The (experimental) *sequence-generator-rest* and *sequence-generator-redis* are 
 
 == Road Map
 
-* Provide a user interface for managing sequence definitions.
-  Administrators must be able to change number format and next available number.
 * Implement a second sequence generator that communicates with an external micro service.
   (maybe built with Spring Boot and Redis). This would add clustering support that the current in-memory implementation `DefaultSequenceGenerator` lacks.
 **  *Work In Progress:* See https://github.com/goeh/grails-sequence-generator-rest[sequence-generator-rest] for an example of an external sequence generator service.
@@ -244,3 +244,5 @@ This plugin is licensed with http://www.apache.org/licenses/LICENSE-2.0.html[Apa
 == Miscellaneous
 
 The http://gr8crm.github.io[GR8 CRM ecosystem] uses the sequence-generator plugin to generate customer, order and invoice numbers.
+
+The https://grails.org/plugin/url-shortener[URL Shortener Plugin] can use this sequence-generator plugin to generate unique numbers.
