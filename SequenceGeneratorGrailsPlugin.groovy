@@ -29,7 +29,7 @@ import javax.management.ObjectName
 import java.lang.management.ManagementFactory
 
 class SequenceGeneratorGrailsPlugin {
-    def version = "1.2"
+    def version = "1.2.1"
     def grailsVersion = "2.2 > *"
     def dependsOn = [:]
     def loadAfter = ['domainClass', 'services']
